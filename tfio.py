@@ -33,6 +33,7 @@ def write_tfrec(arr_x, arr_y, prefix, num_class):
     filename = tfrec_name(prefix, ds_shape, num_class)
     writer = tf.python_io.TFRecordWriter(filename)
     for idx in range(num_example):
+        print(f'{idx+1} / {num_example}')
         x_raw = arr_x[idx].tostring()
         label = arr_y[idx]
         example = tf.train.Example(features=tf.train.Features(feature={
