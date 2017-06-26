@@ -1,13 +1,30 @@
 import tensorflow as tf
 from tensorflow.contrib import slim
 
+
 def loss(logits, label_pl, is_one_hot=False, scope=None):
     with tf.name_scope(scope):
         if is_one_hot:
             cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
         else:
-            cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+            cross_entropy = tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
         total_loss = cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
+    return total_loss
+
+
+def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False, scope=None):
+    with tf.name_scope(scope):
+        if is_one_hot:
+            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+            aux_cross_entropy = aux_weight * tf.reduce_mean(
+                tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=aux_logits))
+        else:
+            cross_entropy = tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+            aux_cross_entropy = aux_weight * tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=aux_logits))
+        total_loss = cross_entropy + aux_cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
     return total_loss
 
 
@@ -34,26 +51,3 @@ def load_ckpt(sess, model_dir, variables_to_restore=None):
         model_path, variables_to_restore)
     sess.run(restore_op, feed_dict=restore_fd)
     print(f'{model_path} loaded')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
