@@ -181,4 +181,4 @@ def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize
                                           batch_size=batch_size,
                                           num_threads=num_threads,
                                           capacity=capacity)
-    return features, labels, size, num_classes
+    return features, labels, size, channels, num_classes
