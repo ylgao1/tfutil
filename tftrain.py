@@ -9,7 +9,12 @@ def loss(logits, label_pl, is_one_hot=False, scope=None):
         else:
             cross_entropy = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
-        total_loss = cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
+        regularization_loss_lst = tf.losses.get_regularization_losses()
+        if len(regularization_loss_lst) == 0:
+            regularization_loss = 0
+        else:
+            regularization_loss = tf.add_n(regularization_loss_lst)
+        total_loss = cross_entropy + regularization_loss
     return total_loss
 
 
@@ -24,7 +29,12 @@ def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False
                 tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
             aux_cross_entropy = aux_weight * tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=aux_logits))
-        total_loss = cross_entropy + aux_cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
+        regularization_loss_lst = tf.losses.get_regularization_losses()
+        if len(regularization_loss_lst) == 0:
+            regularization_loss = 0
+        else:
+            regularization_loss = tf.add_n(regularization_loss_lst)
+        total_loss = cross_entropy + aux_cross_entropy + regularization_loss
     return total_loss
 
 
