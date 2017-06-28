@@ -99,8 +99,9 @@ def read_tfrec(fname):
 
 def read_test_tfrec(fname):
     feature, label, ds_shape, num_classes = read_tfrec(fname)
-    feature = feature[None]
-    return feature, label, ds_shape, num_classes
+    features = feature[None]
+    labels = label[None]
+    return features, labels, ds_shape, num_classes
 
 
 def read_img_tfrec(fname):
@@ -132,8 +133,9 @@ def read_test_img_tfrec(fname, resize=None, resize_enlarge=True, normalization=T
         feature = tf.image.resize_images(feature, resize, resize_method)
     if normalization:
         feature = tf.image.per_image_standardization(feature)
-    feature = feature[None]
-    return feature, label, size, channels, num_classes
+    features = feature[None]
+    labels = label[None]
+    return features, labels, size, channels, num_classes
 
 
 def read_tfrec_batch(fname, batch_size=32, shuffle=True, min_frac_in_q=0.2, num_threads=3):
