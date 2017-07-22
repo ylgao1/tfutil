@@ -183,3 +183,58 @@ def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize
                                           num_threads=num_threads,
                                           capacity=capacity)
     return features, labels, size, channels, num_classes
+
+
+def read_tfrec_train(fname, batch_size, num_epochs=10, is_test=False, shuffle=False, min_frac_in_q=None):
+    if is_test:
+        num_epochs = 1
+        shuffle=False
+        min_frac_in_q=None
+    ds_shape, num_classes = parse_tfrec_name(fname)
+    fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
+    reader = tf.TFRecordReader()
+    _, sdata = reader.read(fn_q)
+    dataset = tf.parse_single_example(sdata, features={
+        'feature': tf.FixedLenFeature([], dtype=tf.string),
+        'label': tf.FixedLenFeature([], dtype=tf.int64)
+    })
+    feature = tf.decode_raw(dataset['feature'], tf.float32)
+    feature = tf.reshape(feature, ds_shape[1:])
+    label = tf.cast(dataset['label'], tf.int32)
+    num_examples = ds_shape[0]
+    if min_frac_in_q is None:
+        min_q_examples = batch_size
+    else:
+        min_q_examples = int(num_examples * min_frac_in_q)
+    capacity = min_q_examples + 3 * batch_size
+    if capacity > num_examples:
+        capacity = num_examples
+    if shuffle:
+        features, labels = tf.train.shuffle_batch([feature, label],
+                                                  batch_size=batch_size,
+                                                  num_threads=1,
+                                                  capacity=capacity,
+                                                  min_after_dequeue=min_q_examples,
+                                                  allow_smaller_final_batch=True)
+    else:
+        features, labels = tf.train.batch([feature, label],
+                                          batch_size=batch_size,
+                                          num_threads=1,
+                                          capacity=capacity,
+                                          allow_smaller_final_batch=True)
+    return features, labels, ds_shape, num_classes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
