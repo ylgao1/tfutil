@@ -138,10 +138,13 @@ def read_test_img_tfrec(fname, resize=None, resize_enlarge=True, normalization=T
     return features, labels, size, channels, num_classes
 
 
-def read_tfrec_batch(fname, batch_size=32, shuffle=True, min_frac_in_q=0.2, num_threads=3):
+def read_tfrec_batch(fname, batch_size=32, shuffle=True, min_frac_in_q=None, num_threads=3):
     feature, label, ds_shape, num_classes = read_tfrec(fname)
     num_example = ds_shape[0]
-    min_queue_examples = int(num_example * min_frac_in_q)
+    if min_frac_in_q is None:
+        min_queue_examples = batch_size
+    else:
+        min_queue_examples = int(num_example * min_frac_in_q)
     capacity = min_queue_examples + 3 * batch_size
     if shuffle:
         features, labels = tf.train.shuffle_batch([feature, label],
