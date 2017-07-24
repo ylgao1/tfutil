@@ -169,7 +169,7 @@ def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize
     return features, labels, num_examples, channels, num_classes
 
 
-def read_tfrec_test(fname, batch_size):
+def read_tfrec_test(fname, batch_size, num_threads=1):
     feature, label, ds_shape, num_classes = read_tfrec(fname, num_epochs=1)
     num_examples = ds_shape[0]
     capacity = 4 * batch_size
@@ -177,13 +177,13 @@ def read_tfrec_test(fname, batch_size):
         capacity = num_examples
     features, labels = tf.train.batch([feature, label],
                                       batch_size=batch_size,
-                                      num_threads=3,
+                                      num_threads=num_threads,
                                       capacity=capacity,
                                       allow_smaller_final_batch=True)
     return features, labels, ds_shape, num_classes
 
 
-def read_img_tfrec_test(fname, batch_size, resize=None, resize_enlarge=True, normalization=True):
+def read_img_tfrec_test(fname, batch_size, num_threads=1, resize=None, resize_enlarge=True, normalization=True):
     feature, label, num_examples, channels, num_classes = read_img_tfrec(fname, num_epochs=1)
     capacity = 4 * batch_size
     if capacity > num_examples:
@@ -198,23 +198,7 @@ def read_img_tfrec_test(fname, batch_size, resize=None, resize_enlarge=True, nor
         feature = tf.image.per_image_standardization(feature)
     features, labels = tf.train.batch([feature, label],
                                       batch_size=batch_size,
-                                      num_threads=1,
+                                      num_threads=num_threads,
                                       capacity=capacity,
                                       allow_smaller_final_batch=True)
     return features, labels, num_examples, channels, num_classes
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
