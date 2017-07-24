@@ -38,6 +38,11 @@ def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False
     return total_loss
 
 
+def create_init_op():
+    init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    return init_op
+
+
 def create_train_op(total_loss, optimizer):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):

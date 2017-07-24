@@ -20,8 +20,8 @@ def tfrec_name(prefix, ds_shape, num_classes):
     return f'{prefix}.{ds_str}.{num_classes}.tfrec'
 
 
-def tfrec_name_var(prefix, size, channels, num_classes):
-    return f'{prefix}.{size}_{channels}.{num_classes}.tfrec'
+def tfrec_name_var(prefix, num_examples, channels, num_classes):
+    return f'{prefix}.{num_examples}_{channels}.{num_classes}.tfrec'
 
 
 def parse_tfrec_name(fname):
@@ -33,22 +33,22 @@ def parse_tfrec_name(fname):
 
 def parse_img_tfrec_name(fname):
     _, shape_str, num_classes_str, _ = os.path.basename(fname).split('.')
-    size_str, channels_str = shape_str.split('_')
-    size = int(size_str)
+    num_examples_str, channels_str = shape_str.split('_')
+    num_examples = int(num_examples_str)
     channels = int(channels_str)
     num_classes = int(num_classes_str)
-    return size, channels, num_classes
+    return num_examples, channels, num_classes
 
 
 def write_tfrec(arr_x, arr_y, prefix, num_classes):
     arr_x = arr_x.astype(np.float32)
     arr_y = arr_y.astype(np.int64)
     ds_shape = arr_x.shape
-    num_example = ds_shape[0]
+    num_examples = ds_shape[0]
     filename = tfrec_name(prefix, ds_shape, num_classes)
     writer = tf.python_io.TFRecordWriter(filename)
-    for idx in range(num_example):
-        print(f'{idx+1} / {num_example}')
+    for idx in range(num_examples):
+        print(f'{idx+1} / {num_examples}')
         x_raw = arr_x[idx].tostring()
         label = arr_y[idx]
         example = tf.train.Example(features=tf.train.Features(feature={
@@ -61,12 +61,12 @@ def write_tfrec(arr_x, arr_y, prefix, num_classes):
 
 def write_img_tfrec(x_lst, arr_y, prefix, num_classes):
     arr_y = arr_y.astype(np.int64)
-    size = len(x_lst)
+    num_examples = len(x_lst)
     channels = x_lst[0].shape[-1]
-    filename = tfrec_name_var(prefix, size, channels, num_classes)
+    filename = tfrec_name_var(prefix, num_examples, channels, num_classes)
     writer = tf.python_io.TFRecordWriter(filename)
-    for idx in range(size):
-        print(f'{idx+1} / {size}')
+    for idx in range(num_examples):
+        print(f'{idx+1} / {num_examples}')
         x = x_lst[idx].astype(np.float32)
         x_raw = x.tostring()
         label = arr_y[idx]
@@ -81,9 +81,9 @@ def write_img_tfrec(x_lst, arr_y, prefix, num_classes):
     writer.close()
 
 
-def read_tfrec(fname):
+def read_tfrec(fname, num_epochs=None):
     ds_shape, num_classes = parse_tfrec_name(fname)
-    fn_q = tf.train.string_input_producer([fname])
+    fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
     reader = tf.TFRecordReader()
     _, sdata = reader.read(fn_q)
     dataset = tf.parse_single_example(sdata, features={
@@ -97,16 +97,9 @@ def read_tfrec(fname):
     return feature, label, ds_shape, num_classes
 
 
-def read_test_tfrec(fname):
-    feature, label, ds_shape, num_classes = read_tfrec(fname)
-    features = feature[None]
-    labels = label[None]
-    return features, labels, ds_shape, num_classes
-
-
-def read_img_tfrec(fname):
-    size, channels, num_classes = parse_img_tfrec_name(fname)
-    fn_q = tf.train.string_input_producer([fname])
+def read_img_tfrec(fname, num_epochs=None):
+    num_examples, channels, num_classes = parse_img_tfrec_name(fname)
+    fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
     reader = tf.TFRecordReader()
     _, sdata = reader.read(fn_q)
     dataset = tf.parse_single_example(sdata, features={
@@ -120,31 +113,16 @@ def read_img_tfrec(fname):
     height = tf.cast(dataset['height'], tf.int32)
     width = tf.cast(dataset['width'], tf.int32)
     feature = tf.reshape(feature, [height, width, channels])
-    return feature, label, size, channels, num_classes
-
-
-def read_test_img_tfrec(fname, resize=None, resize_enlarge=True, normalization=True):
-    feature, label, size, channels, num_classes = read_img_tfrec(fname)
-    if resize is not None:
-        if resize_enlarge:
-            resize_method = tf.image.ResizeMethod.BICUBIC
-        else:
-            resize_method = tf.image.ResizeMethod.BILINEAR
-        feature = tf.image.resize_images(feature, resize, resize_method)
-    if normalization:
-        feature = tf.image.per_image_standardization(feature)
-    features = feature[None]
-    labels = label[None]
-    return features, labels, size, channels, num_classes
+    return feature, label, num_examples, channels, num_classes
 
 
 def read_tfrec_batch(fname, batch_size=32, shuffle=True, min_frac_in_q=None, num_threads=3):
     feature, label, ds_shape, num_classes = read_tfrec(fname)
-    num_example = ds_shape[0]
+    num_examples = ds_shape[0]
     if min_frac_in_q is None:
         min_queue_examples = batch_size
     else:
-        min_queue_examples = int(num_example * min_frac_in_q)
+        min_queue_examples = int(num_examples * min_frac_in_q)
     capacity = min_queue_examples + 3 * batch_size
     if shuffle:
         features, labels = tf.train.shuffle_batch([feature, label],
@@ -161,9 +139,12 @@ def read_tfrec_batch(fname, batch_size=32, shuffle=True, min_frac_in_q=None, num
 
 
 def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize_enlarge=True, normalization=True,
-                         min_frac_in_q=0.2, num_threads=3):
-    feature, label, size, channels, num_classes = read_img_tfrec(fname)
-    min_queue_examples = int(size * min_frac_in_q)
+                         min_frac_in_q=None, num_threads=3):
+    feature, label, num_examples, channels, num_classes = read_img_tfrec(fname)
+    if min_frac_in_q is None:
+        min_queue_examples = batch_size
+    else:
+        min_queue_examples = int(num_examples * min_frac_in_q)
     capacity = min_queue_examples + 3 * batch_size
     if resize is not None:
         if resize_enlarge:
@@ -185,28 +166,55 @@ def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize
                                           batch_size=batch_size,
                                           num_threads=num_threads,
                                           capacity=capacity)
-    return features, labels, size, channels, num_classes
+    return features, labels, num_examples, channels, num_classes
 
 
 def read_tfrec_test(fname, batch_size):
-    ds_shape, num_classes = parse_tfrec_name(fname)
-    fn_q = tf.train.string_input_producer([fname], num_epochs=1)
-    reader = tf.TFRecordReader()
-    _, sdata = reader.read(fn_q)
-    dataset = tf.parse_single_example(sdata, features={
-        'feature': tf.FixedLenFeature([], dtype=tf.string),
-        'label': tf.FixedLenFeature([], dtype=tf.int64)
-    })
-    feature = tf.decode_raw(dataset['feature'], tf.float32)
-    feature = tf.reshape(feature, ds_shape[1:])
-    label = tf.cast(dataset['label'], tf.int32)
+    feature, label, ds_shape, num_classes = read_tfrec(fname, num_epochs=1)
     num_examples = ds_shape[0]
     capacity = 4 * batch_size
     if capacity > num_examples:
         capacity = num_examples
     features, labels = tf.train.batch([feature, label],
                                       batch_size=batch_size,
-                                      num_threads=1,
+                                      num_threads=3,
                                       capacity=capacity,
                                       allow_smaller_final_batch=True)
     return features, labels, ds_shape, num_classes
+
+
+def read_img_tfrec_test(fname, batch_size, resize=None, resize_enlarge=True, normalization=True):
+    feature, label, num_examples, channels, num_classes = read_img_tfrec(fname, num_epochs=1)
+    capacity = 4 * batch_size
+    if capacity > num_examples:
+        capacity = num_examples
+    if resize is not None:
+        if resize_enlarge:
+            resize_method = tf.image.ResizeMethod.BICUBIC
+        else:
+            resize_method = tf.image.ResizeMethod.BILINEAR
+        feature = tf.image.resize_images(feature, resize, resize_method)
+    if normalization:
+        feature = tf.image.per_image_standardization(feature)
+    features, labels = tf.train.batch([feature, label],
+                                      batch_size=batch_size,
+                                      num_threads=1,
+                                      capacity=capacity,
+                                      allow_smaller_final_batch=True)
+    return features, labels, num_examples, channels, num_classes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
