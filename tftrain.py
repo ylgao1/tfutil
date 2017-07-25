@@ -72,7 +72,7 @@ def load_ckpt(sess, model_dir, variables_to_restore=None):
 
 training_tensor = namedtuple('training_tensor', ('features', 'labels', 'xpl', 'ypl', 'loss',
                                               'train_op', 'correct_num', 'accuracy'))
-testing_tensor = namedtuple('testing_tensor', ('features', 'labels', 'xpl', 'ypl', 'correct_num', 'logits'))
+testing_tensor = namedtuple('testing_tensor', ('features', 'labels', 'xpl', 'ypl', 'correct_num'))
 
 
 def fit_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, model_path=None):
