@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import slim
+from collections import namedtuple
+from progress.bar import Bar
 
 
 def loss(logits, label_pl, is_one_hot=False, scope=None):
@@ -66,3 +68,64 @@ def load_ckpt(sess, model_dir, variables_to_restore=None):
         model_path, variables_to_restore)
     sess.run(restore_op, feed_dict=restore_fd)
     print(f'{model_path} loaded')
+
+
+training_tensor = namedtuple('training_tensor', ('features', 'labels', 'xpl', 'ypl', 'loss',
+                                              'train_op', 'correct_num', 'accuracy'))
+testing_tensor = namedtuple('testing_tensor', ('features', 'labels', 'xpl', 'ypl', 'correct_num', 'logits'))
+
+
+def fit_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, model_path=None):
+    loss_value_lst = []
+    num_steps_per_epoch = num_examples // batch_size
+    for epoch in range(n_epochs):
+        loss_value = 0
+        correct_num_value = 0
+        bar = Bar(f'Epoch {epoch+1}', max=num_steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for i in range(num_steps_per_epoch):
+            xb, yb = sess.run([training_t.features, training_t.labels])
+            feed_dict = {training_t.xpl: xb, training_t.ypl: yb}
+            _, loss_value, correct_num_value, accuracy_value = sess.run([training_t.train_op, training_t.loss,
+                                                                         training_t.correct_num, training_t.accuracy],
+                                                                        feed_dict=feed_dict)
+            bar.next()
+        bar.finish()
+        print(f'Epoch {epoch+1}: {loss_value}; {correct_num_value} / {batch_size}; {accuracy_value}')
+        loss_value_lst.append(loss_value)
+        if saver is not None:
+            saver.save(sess, model_path, global_step=epoch)
+
+
+def testing_cls(sess, testing_t, num_examples):
+    total_correct_num = 0
+    bar = Bar(f'Test: ', max=num_examples, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+    while True:
+        try:
+            xb, yb = sess.run([testing_t.features, testing_t.labels])
+            correct_num_value = sess.run(testing_t.correct_num, feed_dict={testing_t.xpl: xb, testing_t.ypl: yb})
+            total_correct_num += correct_num_value
+            mini_size = xb.shape[0]
+            for _ in range(mini_size):
+                bar.next()
+        except tf.errors.OutOfRangeError:
+            bar.finish()
+            break
+    acc = total_correct_num / num_examples
+    print(f'Accuracy: {acc}')
+    return acc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
