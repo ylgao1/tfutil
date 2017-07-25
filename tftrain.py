@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
 from collections import namedtuple
@@ -70,12 +71,25 @@ def load_ckpt(sess, model_dir, variables_to_restore=None):
     print(f'{model_path} loaded')
 
 
-training_tensor = namedtuple('training_tensor', ('features', 'labels', 'xpl', 'ypl', 'loss',
-                                              'train_op', 'correct_num', 'accuracy'))
-testing_tensor = namedtuple('testing_tensor', ('features', 'labels', 'xpl', 'ypl', 'correct_num'))
+training_tensors = namedtuple('training_tensors', ('features', 'labels', 'xpl', 'ypl', 'loss',
+                                                   'train_op', 'correct_num', 'accuracy'))
+testing_tensors = namedtuple('testing_tensors', ('features', 'labels', 'xpl', 'ypl', 'correct_num'))
+predicting_tensors = namedtuple('predicting_tensors', ('features', 'xpl', 'logits'))
 
 
-def fit_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, model_path=None):
+def predicting_cls(sess, predicting_t):
+    logits_lst = []
+    while True:
+        try:
+            xb = sess.run([predicting_t.features])
+            logits = sess.run(predicting_t.logits, feed_dict={predicting_t.xpl: xb})
+            logits_lst.append(logits)
+        except tf.errors.OutOfRangeError:
+            break
+    return np.concatenate(logits_lst, axis=0)
+
+
+def training_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, model_path=None):
     loss_value_lst = []
     num_steps_per_epoch = num_examples // batch_size
     for epoch in range(n_epochs):
@@ -98,7 +112,7 @@ def fit_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, mo
 
 def testing_cls(sess, testing_t, num_examples):
     total_correct_num = 0
-    bar = Bar(f'Test: ', max=num_examples, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+    bar = Bar(f'Testing: ', max=num_examples, suffix='%(index)d/%(max)d ETA: %(eta)d s')
     while True:
         try:
             xb, yb = sess.run([testing_t.features, testing_t.labels])
@@ -113,19 +127,3 @@ def testing_cls(sess, testing_t, num_examples):
     acc = total_correct_num / num_examples
     print(f'Accuracy: {acc}')
     return acc
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
