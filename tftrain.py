@@ -60,6 +60,21 @@ def cal_accuracy(logits, label_pl, top_k=1):
     return correct_num, accuracy
 
 
+def get_all_ckpt(model_dir):
+    ckpt = tf.train.get_checkpoint_state(model_dir)
+    model_path_lst = list(ckpt.all_model_checkpoint_paths)
+    return model_path_lst
+
+
+def load_ckpt_path(sess, model_path, variables_to_restore=None):
+    if variables_to_restore is None:
+        variables_to_restore = slim.get_variables_to_restore()
+    restore_op, restore_fd = slim.assign_from_checkpoint(
+        model_path, variables_to_restore)
+    sess.run(restore_op, feed_dict=restore_fd)
+    print(f'{model_path} loaded')
+
+
 def load_ckpt(sess, model_dir, variables_to_restore=None):
     ckpt = tf.train.get_checkpoint_state(model_dir)
     model_path = ckpt.model_checkpoint_path
