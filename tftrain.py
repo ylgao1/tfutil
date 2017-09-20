@@ -2,7 +2,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
 from collections import namedtuple
+from tempfile import NamedTemporaryFile
 from progress.bar import Bar
+from tensorflow.python.tools import freeze_graph
 
 
 def loss(logits, label_pl, is_one_hot=False, scope=None):
@@ -84,6 +86,37 @@ def load_ckpt(sess, model_dir, variables_to_restore=None):
         model_path, variables_to_restore)
     sess.run(restore_op, feed_dict=restore_fd)
     print(f'{model_path} loaded')
+
+
+def save_model_pb(sess, ckpt_prefix, pb_output_path, output_node_names):
+    ckpt_meta_graph_path = f'{ckpt_prefix}.meta'
+    with NamedTemporaryFile(mode='w+') as ori_graph_tmp:
+        ori_graph_tmp_path = ori_graph_tmp.name
+        tf.train.write_graph(sess.graph, '', ori_graph_tmp_path)
+        ori_graph_tmp.file.flush()
+        freeze_graph.freeze_graph(input_graph=ori_graph_tmp_path,
+                                  input_saver=None,
+                                  input_binary=False,
+                                  input_checkpoint=ckpt_prefix,
+                                  output_node_names=output_node_names,
+                                  restore_op_name=None,
+                                  filename_tensor_name=None,
+                                  output_graph=pb_output_path,
+                                  clear_devices=None,
+                                  initializer_nodes=None,
+                                  variable_names_blacklist=ckpt_meta_graph_path)
+    return output_node_names
+
+
+def load_model_pb(pb_path, input_node_name_lst, output_node_name_lst):
+    pb_graph_def = tf.GraphDef()
+    g = tf.get_default_graph()
+    with open(pb_path, 'rb') as f:
+        pb_graph_def.ParseFromString(f.read())
+        _ = tf.import_graph_def(pb_graph_def, name='')
+    input_nodes = [g.get_tensor_by_name(f'{nm}:0') for nm in input_node_name_lst]
+    output_nodes = [g.get_tensor_by_name(f'{nm}:0') for nm in output_node_name_lst]
+    return input_nodes, output_nodes
 
 
 training_tensors = namedtuple('training_tensors', ('features', 'labels', 'xpl', 'ypl', 'loss',
