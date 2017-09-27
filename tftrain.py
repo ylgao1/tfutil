@@ -61,11 +61,11 @@ def cal_accuracy(logits, label_pl, top_k=1):
     accuracy = tf.reduce_mean(tf.cast(top_k_op, tf.float32), name='accuracy')
     return correct_num, accuracy
 
-
 def get_all_ckpt(model_dir):
     ckpt = tf.train.get_checkpoint_state(model_dir)
     model_path_lst = list(ckpt.all_model_checkpoint_paths)
     return model_path_lst
+
 
 
 def load_ckpt_path(sess, model_path, variables_to_restore=None):
