@@ -43,15 +43,29 @@ def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False
     return total_loss
 
 
+def masked_sigmoid_cross_entropy(logits, target, mask, scope=None):
+    """Time major"""
+    with tf.name_scope(scope):
+        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=logits)
+        loss_time_batch = tf.reduce_sum(xent, axis=2)
+        loss_batch = tf.reduce_sum(loss_time_batch * mask, axis=0)
+        loss = tf.reduce_mean(loss_batch)
+    return loss
+
+
 def create_init_op():
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     return init_op
 
 
-def create_train_op(total_loss, optimizer):
+def create_train_op(total_loss, optimizer, max_grad_norm=None, global_step=None):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        train_op = optimizer.minimize(total_loss)
+        if max_grad_norm is None:
+            train_op = optimizer.minimize(total_loss, global_step=global_step)
+        else:
+            grads, _ = tf.clip_by_global_norm(tf.gradients(total_loss, tf.trainable_variables()), max_grad_norm)
+            train_op = optimizer.apply_gradients(zip(grads, tf.trainable_variables()), global_step=global_step)
     return train_op
 
 
@@ -61,11 +75,11 @@ def cal_accuracy(logits, label_pl, top_k=1):
     accuracy = tf.reduce_mean(tf.cast(top_k_op, tf.float32), name='accuracy')
     return correct_num, accuracy
 
+
 def get_all_ckpt(model_dir):
     ckpt = tf.train.get_checkpoint_state(model_dir)
     model_path_lst = list(ckpt.all_model_checkpoint_paths)
     return model_path_lst
-
 
 
 def load_ckpt_path(sess, model_path, variables_to_restore=None):
