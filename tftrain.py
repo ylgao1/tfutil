@@ -53,6 +53,16 @@ def masked_sigmoid_cross_entropy(logits, target, mask, scope=None):
     return loss
 
 
+def seq_sigmoid_cross_entropy(logits, target, scope=None):
+    """Time major"""
+    with tf.name_scope(scope):
+        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=logits)
+        loss_time_batch = tf.reduce_sum(xent, axis=2)
+        loss_batch = tf.reduce_sum(loss_time_batch, axis=0)
+        loss = tf.reduce_mean(loss_batch)
+    return loss
+
+
 def create_init_op():
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     return init_op
