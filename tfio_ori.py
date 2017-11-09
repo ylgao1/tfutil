@@ -15,101 +15,43 @@ def _float_feature(value):
     return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
 
-def tfrec_name(prefix, ds_shape, num_classes, index=None):
+def tfrec_name(prefix, ds_shape, num_classes):
     ds_str = '_'.join(map(str, ds_shape))
-    if index is None:
-        return f'{prefix}.{ds_str}.{num_classes}.tfrec'
-    else:
-        return f'{prefix}.{ds_str}.{num_classes}.tfrec{index}'
+    return f'{prefix}.{ds_str}.{num_classes}.tfrec'
 
 
-def tfrec_pred_name(prefix, ds_shape, index=None):
+def tfrec_name_noy(prefix, ds_shape):
     ds_str = '_'.join(map(str, ds_shape))
-    if index is None:
-        return f'{prefix}.{ds_str}.tfrec'
-    else:
-        return f'{prefix}.{ds_str}.tfrec{index}'
+    return f'{prefix}.{ds_str}.tfrec'
 
 
-def tfrec_img_name(prefix, num_examples, channels, num_classes, index=None):
-    if index is None:
-        return f'{prefix}.{num_examples}_{channels}.{num_classes}.tfimgrec'
-    else:
-        return f'{prefix}.{num_examples}_{channels}.{num_classes}.tfimgrec{index}'
-
-
-def tfrec_img_pred_name(prefix, num_examples, channels, index=None):
-    if index is None:
-        return f'{prefix}.{num_examples}_{channels}.tfimgrec'
-    else:
-        return f'{prefix}.{num_examples}_{channels}.tfimgrec{index}'
+def tfrec_name_var(prefix, num_examples, channels, num_classes):
+    return f'{prefix}.{num_examples}_{channels}.{num_classes}.tfrec'
 
 
 def parse_tfrec_name(fname):
-    name_parts = os.path.basename(fname).split('.')
-    with_label = True
-    if name_parts[-1][:8] == 'tfimgrec':
-        if len(name_parts) == 4:
-            _, shape_str, num_classes_str, _ = name_parts
-            num_examples_str, channels_str = shape_str.split('_')
-            num_examples = int(num_examples_str)
-            channels = int(channels_str)
-            num_classes = int(num_classes_str)
-            return (with_label, num_examples, channels, num_classes)
-        else:
-            _, shape_str, _ = name_parts
-            num_examples_str, channels_str = shape_str.split('_')
-            num_examples = int(num_examples_str)
-            channels = int(channels_str)
-            with_label = False
-            return (with_label, num_examples, channels)
-    else:
-        if len(name_parts) == 4:
-            _, ds_shape_str, num_classes_str, _ = name_parts
-            ds_shape = list(map(int, ds_shape_str.split('_')))
-            num_classes = int(num_classes_str)
-            return (with_label, ds_shape, num_classes)
-        else:
-            _, ds_shape_str, _ = name_parts
-            ds_shape = list(map(int, ds_shape_str.split('_')))
-            with_label = False
-            return (with_label, ds_shape)
+    _, ds_shape_str, num_classes_str, _ = os.path.basename(fname).split('.')
+    ds_shape = list(map(int, ds_shape_str.split('_')))
+    num_classes = int(num_classes_str)
+    return ds_shape, num_classes
 
 
-def read_tfrec(filenames, batch_size, num_epochs=None, shuffle=True):
-    if isinstance(filenames, str):
-        filenames = [filenames]
-    dataset = tf.data.TFRecordDataset(filenames)
-    filename_parsed = parse_tfrec_name(filenames[0])
-    return filename_parsed
+def parse_tfrec_name_noy(fname):
+    _, ds_shape_str, _ = os.path.basename(fname).split('.')
+    ds_shape = list(map(int, ds_shape_str.split('_')))
+    return ds_shape
 
 
-def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes):
-    arr_x = arr_x.astype(np.float32)
-    arr_y = arr_y.astype(np.float32) if num_classes == 0 else arr_y.astype(np.int64)
-    ds_shape = arr_x.shape
-    num_examples = ds_shape[0]
-    filename = tfrec_name(prefix, ds_shape, num_classes)
-    writer = tf.python_io.TFRecordWriter(filename)
-    for idx in range(num_examples):
-        print(f'{idx+1} / {num_examples}')
-        x_raw = arr_x[idx].tostring()
-        label = arr_y[idx]
-        if num_classes == 0:
-            example = tf.train.Example(features=tf.train.Features(feature={
-                'feature': _bytes_feature(x_raw),
-                'label': _float_feature(label)
-            }))
-        else:
-            example = tf.train.Example(features=tf.train.Features(feature={
-                'feature': _bytes_feature(x_raw),
-                'label': _int64_feature(label)
-            }))
-        writer.write(example.SerializeToString())
-    writer.close()
+def parse_img_tfrec_name(fname):
+    _, shape_str, num_classes_str, _ = os.path.basename(fname).split('.')
+    num_examples_str, channels_str = shape_str.split('_')
+    num_examples = int(num_examples_str)
+    channels = int(channels_str)
+    num_classes = int(num_classes_str)
+    return num_examples, channels, num_classes
 
 
-def write_tfrec2(arr_x, arr_y, prefix, num_classes):
+def write_tfrec(arr_x, arr_y, prefix, num_classes):
     arr_x = arr_x.astype(np.float32)
     arr_y = arr_y.astype(np.int64)
     ds_shape = arr_x.shape
@@ -132,7 +74,7 @@ def write_tfrec_noy(arr_x, prefix):
     arr_x = arr_x.astype(np.float32)
     ds_shape = arr_x.shape
     num_examples = ds_shape[0]
-    filename = tfrec_img_name(prefix, ds_shape)
+    filename = tfrec_name_noy(prefix, ds_shape)
     writer = tf.python_io.TFRecordWriter(filename)
     for idx in range(num_examples):
         print(f'{idx+1} / {num_examples}')
@@ -148,7 +90,7 @@ def write_img_tfrec(x_lst, arr_y, prefix, num_classes):
     arr_y = arr_y.astype(np.int64)
     num_examples = len(x_lst)
     channels = x_lst[0].shape[-1]
-    filename = tfrec_img_name(prefix, num_examples, channels, num_classes)
+    filename = tfrec_name_var(prefix, num_examples, channels, num_classes)
     writer = tf.python_io.TFRecordWriter(filename)
     for idx in range(num_examples):
         print(f'{idx+1} / {num_examples}')
@@ -166,7 +108,7 @@ def write_img_tfrec(x_lst, arr_y, prefix, num_classes):
     writer.close()
 
 
-def read_tfrec2(fname, num_epochs=None):
+def read_tfrec(fname, num_epochs=None):
     ds_shape, num_classes = parse_tfrec_name(fname)
     fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
     reader = tf.TFRecordReader()
@@ -183,7 +125,7 @@ def read_tfrec2(fname, num_epochs=None):
 
 
 def read_tfrec_noy(fname, num_epochs=None):
-    ds_shape = parse_tfrec_name(fname)
+    ds_shape = parse_tfrec_name_noy(fname)
     fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
     reader = tf.TFRecordReader()
     _, sdata = reader.read(fn_q)
@@ -196,7 +138,7 @@ def read_tfrec_noy(fname, num_epochs=None):
 
 
 def read_img_tfrec(fname, num_epochs=None):
-    num_examples, channels, num_classes = parse_tfrec_name(fname)
+    num_examples, channels, num_classes = parse_img_tfrec_name(fname)
     fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
     reader = tf.TFRecordReader()
     _, sdata = reader.read(fn_q)
@@ -246,15 +188,15 @@ def read_tfrec_batch_noy(fname, batch_size=32, shuffle=True, min_frac_in_q=None,
     capacity = min_queue_examples + 3 * batch_size
     if shuffle:
         features = tf.train.shuffle_batch([feature],
-                                          batch_size=batch_size,
-                                          num_threads=num_threads,
-                                          capacity=capacity,
-                                          min_after_dequeue=min_queue_examples)
+                                           batch_size=batch_size,
+                                           num_threads=num_threads,
+                                           capacity=capacity,
+                                           min_after_dequeue=min_queue_examples)
     else:
         features = tf.train.batch([feature],
-                                  batch_size=batch_size,
-                                  num_threads=num_threads,
-                                  capacity=capacity)
+                                   batch_size=batch_size,
+                                   num_threads=num_threads,
+                                   capacity=capacity)
     return features, ds_shape
 
 
