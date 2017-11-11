@@ -524,86 +524,34 @@ def write_tfimgrec_pred_from_lst(x_lst, prefix, num_examples_per_file=None):
             writer.close()
 
 
-def read_img_tfrec(fname, num_epochs=None):
-    num_examples, channels, num_classes = parse_tfrec_name(fname)
-    fn_q = tf.train.string_input_producer([fname], num_epochs=num_epochs)
-    reader = tf.TFRecordReader()
-    _, sdata = reader.read(fn_q)
-    dataset = tf.parse_single_example(sdata, features={
-        'feature': tf.FixedLenFeature([], dtype=tf.string),
-        'label': tf.FixedLenFeature([], dtype=tf.int64),
-        'height': tf.FixedLenFeature([], dtype=tf.int64),
-        'width': tf.FixedLenFeature([], dtype=tf.int64)
-    })
-    feature = tf.decode_raw(dataset['feature'], tf.float32)
-    label = tf.cast(dataset['label'], tf.int32)
-    height = tf.cast(dataset['height'], tf.int32)
-    width = tf.cast(dataset['width'], tf.int32)
-    feature = tf.reshape(feature, [height, width, channels])
-    return feature, label, num_examples, channels, num_classes
+
+def _convert_to_real_name(temp_filename, num_examples):
+    return temp_filename.replace('000', f'{num_examples}')
+
+def write_tfrec_from_generator(gn, prefix, num_classes, num_examples_per_file=None):
+    
+    if num_examples_per_file is None:
+        for x, y in gn:
+            x_raw = x.astype(np.float32)
+            label = y.astype(np.float32) if num_classes == 0 else y.astype(np.int64)
+            ds_shape = ['000', *x_raw.shape]
 
 
-def read_img_tfrec_batch(fname, batch_size=32, shuffle=True, resize=None, resize_enlarge=True, normalization=True,
-                         min_frac_in_q=None, num_threads=3):
-    feature, label, num_examples, channels, num_classes = read_img_tfrec(fname)
-    if min_frac_in_q is None:
-        min_queue_examples = batch_size
-    else:
-        min_queue_examples = int(num_examples * min_frac_in_q)
-    capacity = min_queue_examples + 3 * batch_size
-    if resize is not None:
-        if resize_enlarge:
-            resize_method = tf.image.ResizeMethod.BICUBIC
-        else:
-            resize_method = tf.image.ResizeMethod.BILINEAR
-        feature = tf.image.resize_images(feature, resize, resize_method)
-    if normalization:
-        feature = tf.image.per_image_standardization(feature)
-
-    if shuffle:
-        features, labels = tf.train.shuffle_batch([feature, label],
-                                                  batch_size=batch_size,
-                                                  num_threads=num_threads,
-                                                  capacity=capacity,
-                                                  min_after_dequeue=min_queue_examples)
-    else:
-        features, labels = tf.train.batch([feature, label],
-                                          batch_size=batch_size,
-                                          num_threads=num_threads,
-                                          capacity=capacity)
-    return features, labels, num_examples, channels, num_classes
 
 
-def read_tfrec_test(fname, batch_size, num_threads=1):
-    feature, label, ds_shape, num_classes = read_tfrec(fname, num_epochs=1)
-    num_examples = ds_shape[0]
-    capacity = 4 * batch_size
-    if capacity > num_examples:
-        capacity = num_examples
-    features, labels = tf.train.batch([feature, label],
-                                      batch_size=batch_size,
-                                      num_threads=num_threads,
-                                      capacity=capacity,
-                                      allow_smaller_final_batch=True)
-    return features, labels, ds_shape, num_classes
 
 
-def read_img_tfrec_test(fname, batch_size, num_threads=1, resize=None, resize_enlarge=True, normalization=True):
-    feature, label, num_examples, channels, num_classes = read_img_tfrec(fname, num_epochs=1)
-    capacity = 4 * batch_size
-    if capacity > num_examples:
-        capacity = num_examples
-    if resize is not None:
-        if resize_enlarge:
-            resize_method = tf.image.ResizeMethod.BICUBIC
-        else:
-            resize_method = tf.image.ResizeMethod.BILINEAR
-        feature = tf.image.resize_images(feature, resize, resize_method)
-    if normalization:
-        feature = tf.image.per_image_standardization(feature)
-    features, labels = tf.train.batch([feature, label],
-                                      batch_size=batch_size,
-                                      num_threads=num_threads,
-                                      capacity=capacity,
-                                      allow_smaller_final_batch=True)
-    return features, labels, num_examples, channels, num_classes
+
+
+
+
+
+
+
+
+
+
+
+
+
+

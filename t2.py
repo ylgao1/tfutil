@@ -30,7 +30,7 @@ a2lst = rec_names(a2, 2)
 a3lst = rec_names(a3, 2)
 
 gn1 = read_raw_tfimgrec(a1lst, None)
-gn2 = read_tfimgrec(a1lst, (2, 2), 4, None, shuffle=True)
+gn2 = read_tfimgrec(a1lst, (2, 2), 4, None, shuffle=True, normalization=False)
 gn3 = read_tfimgrec(a2lst, (2, 2), 4, None)
 gn4 = read_tfimgrec(a3lst, (2, 2), 4, None)
 
