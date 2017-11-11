@@ -271,8 +271,10 @@ def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_f
     arr_y = arr_y.astype(np.float32) if num_classes == 0 else arr_y.astype(np.int64)
     ds_shape = arr_x.shape
     num_examples = ds_shape[0]
+    filenames = []
     if num_examples_per_file is None or num_examples_per_file >= num_examples:
         filename = tfrec_name(prefix, ds_shape, num_classes)
+        filenames.append(filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for idx in range(num_examples):
             print(f'{idx+1} / {num_examples}')
@@ -296,6 +298,7 @@ def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_f
         idx = -1
         for i in range(num_splits):
             filename = tfrec_name(prefix, ds_shape, num_classes, index=i)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(num_examples_per_file):
                 idx += 1
@@ -316,6 +319,7 @@ def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_f
             writer.close()
         if res != 0:
             filename = tfrec_name(prefix, ds_shape, num_classes, index=num_splits)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(res):
                 idx += 1
@@ -334,14 +338,17 @@ def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_f
                     }))
                 writer.write(example.SerializeToString())
             writer.close()
+    return filenames
 
 
 def write_tfrec_pred_from_array(arr_x, prefix, num_examples_per_file=None):
     arr_x = arr_x.astype(np.float32)
     ds_shape = arr_x.shape
     num_examples = ds_shape[0]
+    filenames = []
     if num_examples_per_file is None or num_examples_per_file >= num_examples:
         filename = tfrec_pred_name(prefix, ds_shape)
+        filenames.append(filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for idx in range(num_examples):
             print(f'{idx+1} / {num_examples}')
@@ -357,6 +364,7 @@ def write_tfrec_pred_from_array(arr_x, prefix, num_examples_per_file=None):
         idx = -1
         for i in range(num_splits):
             filename = tfrec_pred_name(prefix, ds_shape, index=i)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(num_examples_per_file):
                 idx += 1
@@ -369,6 +377,7 @@ def write_tfrec_pred_from_array(arr_x, prefix, num_examples_per_file=None):
             writer.close()
         if res != 0:
             filename = tfrec_pred_name(prefix, ds_shape, index=num_splits)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(res):
                 idx += 1
@@ -379,14 +388,17 @@ def write_tfrec_pred_from_array(arr_x, prefix, num_examples_per_file=None):
                 }))
                 writer.write(example.SerializeToString())
             writer.close()
+    return filenames
 
 
 def write_tfimgrec_from_lst(x_lst, arr_y, prefix, num_classes, num_examples_per_file=None):
     arr_y = arr_y.astype(np.float32) if num_classes == 0 else arr_y.astype(np.int64)
     num_examples = len(x_lst)
     channels = x_lst[0].shape[-1]
+    filenames = []
     if num_examples_per_file is None or num_examples_per_file >= num_examples:
         filename = tfimgrec_name(prefix, num_examples, channels, num_classes)
+        filenames.append(filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for idx in range(num_examples):
             print(f'{idx+1} / {num_examples}')
@@ -416,6 +428,7 @@ def write_tfimgrec_from_lst(x_lst, arr_y, prefix, num_classes, num_examples_per_
         idx = -1
         for i in range(num_splits):
             filename = tfimgrec_name(prefix, num_examples, channels, num_classes, index=i)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(num_examples_per_file):
                 idx += 1
@@ -442,6 +455,7 @@ def write_tfimgrec_from_lst(x_lst, arr_y, prefix, num_classes, num_examples_per_
             writer.close()
         if res != 0:
             filename = tfimgrec_name(prefix, num_examples, channels, num_classes, index=num_splits)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(res):
                 idx += 1
@@ -466,13 +480,16 @@ def write_tfimgrec_from_lst(x_lst, arr_y, prefix, num_classes, num_examples_per_
                     }))
                 writer.write(example.SerializeToString())
             writer.close()
+    return filenames
 
 
 def write_tfimgrec_pred_from_lst(x_lst, prefix, num_examples_per_file=None):
     num_examples = len(x_lst)
     channels = x_lst[0].shape[-1]
+    filenames = []
     if num_examples_per_file is None or num_examples_per_file >= num_examples:
         filename = tfimgrec_pred_name(prefix, num_examples, channels)
+        filenames.append(filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for idx in range(num_examples):
             print(f'{idx+1} / {num_examples}')
@@ -492,6 +509,7 @@ def write_tfimgrec_pred_from_lst(x_lst, prefix, num_examples_per_file=None):
         idx = -1
         for i in range(num_splits):
             filename = tfimgrec_pred_name(prefix, num_examples, channels, index=i)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(num_examples_per_file):
                 idx += 1
@@ -508,6 +526,7 @@ def write_tfimgrec_pred_from_lst(x_lst, prefix, num_examples_per_file=None):
             writer.close()
         if res != 0:
             filename = tfimgrec_pred_name(prefix, num_examples, channels, index=num_splits)
+            filenames.append(filename)
             writer = tf.python_io.TFRecordWriter(filename)
             for _ in range(res):
                 idx += 1
@@ -522,6 +541,7 @@ def write_tfimgrec_pred_from_lst(x_lst, prefix, num_examples_per_file=None):
                 }))
                 writer.write(example.SerializeToString())
             writer.close()
+    return filenames
 
 
 def _convert_to_real_name(temp_filename, num_examples):
@@ -529,15 +549,17 @@ def _convert_to_real_name(temp_filename, num_examples):
 
 
 def write_tfrec_from_generator(gn, prefix, num_classes, num_examples_per_file=None):
+    filenames = []
+    x, y = next(gn)
+    num_examples = 1
+    ds_shape = ['000', *x.shape]
     if num_examples_per_file is None:
-        x, y = next(gn)
-        num_examples = 1
-        ds_shape = ['000', *x.shape]
         temp_filename = tfrec_name(prefix, ds_shape, num_classes)
         writer = tf.python_io.TFRecordWriter(temp_filename)
         while True:
             try:
-                x_raw = x.astype(np.float32)
+                print(f'{num_examples} records written')
+                x_raw = x.astype(np.float32).tostring()
                 label = y.astype(np.float32) if num_classes == 0 else y.astype(np.int64)
                 if num_classes == 0:
                     example = tf.train.Example(features=tf.train.Features(feature={
@@ -557,14 +579,291 @@ def write_tfrec_from_generator(gn, prefix, num_classes, num_examples_per_file=No
         writer.close()
         filename = _convert_to_real_name(temp_filename, num_examples)
         os.rename(temp_filename, filename)
+        filenames.append(filename)
+    else:
+        i_split = 0
+        end_gn = False
+        temp_filenames = []
+        while not end_gn:
+            temp_filename = tfrec_name(prefix, ds_shape, num_classes, index=i_split)
+            writer = tf.python_io.TFRecordWriter(temp_filename)
+            for _ in range(num_examples_per_file):
+                try:
+                    print(f'{num_examples} records written')
+                    x_raw = x.astype(np.float32).tostring()
+                    label = y.astype(np.float32) if num_classes == 0 else y.astype(np.int64)
+                    if num_classes == 0:
+                        example = tf.train.Example(features=tf.train.Features(feature={
+                            'feature': _bytes_feature(x_raw),
+                            'label': _float_feature(label)
+                        }))
+                    else:
+                        example = tf.train.Example(features=tf.train.Features(feature={
+                            'feature': _bytes_feature(x_raw),
+                            'label': _int64_feature(label)
+                        }))
+                    writer.write(example.SerializeToString())
+                    x, y = next(gn)
+                    num_examples += 1
+                except StopIteration:
+                    end_gn = True
+                    break
+            writer.close()
+            temp_filenames.append(temp_filename)
+            i_split += 1
+        for fnm in temp_filenames:
+            filename = _convert_to_real_name(fnm, num_examples)
+            os.rename(fnm, filename)
+            filenames.append(filename)
+    return filenames
 
 
+def write_tfrec_pred_from_generator(gn, prefix, num_examples_per_file=None):
+    filenames = []
+    x = next(gn)
+    num_examples = 1
+    ds_shape = ['000', *x.shape]
+    if num_examples_per_file is None:
+        temp_filename = tfrec_pred_name(prefix, ds_shape)
+        writer = tf.python_io.TFRecordWriter(temp_filename)
+        while True:
+            try:
+                print(f'{num_examples} records written')
+                x_raw = x.astype(np.float32).tostring()
+                example = tf.train.Example(features=tf.train.Features(feature={
+                    'feature': _bytes_feature(x_raw),
+                }))
+                writer.write(example.SerializeToString())
+                x = next(gn)
+                num_examples += 1
+            except StopIteration:
+                break
+        writer.close()
+        filename = _convert_to_real_name(temp_filename, num_examples)
+        os.rename(temp_filename, filename)
+        filenames.append(filename)
+    else:
+        i_split = 0
+        end_gn = False
+        temp_filenames = []
+        while not end_gn:
+            temp_filename = tfrec_pred_name(prefix, ds_shape, index=i_split)
+            writer = tf.python_io.TFRecordWriter(temp_filename)
+            for _ in range(num_examples_per_file):
+                try:
+                    print(f'{num_examples} records written')
+                    x_raw = x.astype(np.float32).tostring()
+                    example = tf.train.Example(features=tf.train.Features(feature={
+                        'feature': _bytes_feature(x_raw),
+                    }))
+                    writer.write(example.SerializeToString())
+                    x = next(gn)
+                    num_examples += 1
+                except StopIteration:
+                    end_gn = True
+                    break
+            writer.close()
+            temp_filenames.append(temp_filename)
+            i_split += 1
+        for fnm in temp_filenames:
+            filename = _convert_to_real_name(fnm, num_examples)
+            os.rename(fnm, filename)
+            filenames.append(filename)
+    return filenames
 
 
+def write_tfimgrec_from_generator(gn, prefix, num_classes, num_examples_per_file=None):
+    filenames = []
+    x, y = next(gn)
+    num_examples = 1
+    channels = x.shape[-1]
+    if num_examples_per_file is None:
+        temp_filename = tfimgrec_name(prefix, '000', channels, num_classes)
+        writer = tf.python_io.TFRecordWriter(temp_filename)
+        while True:
+            try:
+                print(f'{num_examples} records written')
+                x_raw = x.astype(np.float32).tostring()
+                label = y.astype(np.float32) if num_classes == 0 else y.astype(np.int64)
+                height, width = x.shape[:2]
+                if num_classes == 0:
+                    example = tf.train.Example(features=tf.train.Features(feature={
+                        'feature': _bytes_feature(x_raw),
+                        'label': _float_feature(label),
+                        'height': _int64_feature(height),
+                        'width': _int64_feature(width)
+                    }))
+                else:
+                    example = tf.train.Example(features=tf.train.Features(feature={
+                        'feature': _bytes_feature(x_raw),
+                        'label': _int64_feature(label),
+                        'height': _int64_feature(height),
+                        'width': _int64_feature(width)
+                    }))
+                writer.write(example.SerializeToString())
+                x, y = next(gn)
+                num_examples += 1
+            except StopIteration:
+                break
+        writer.close()
+        filename = _convert_to_real_name(temp_filename, num_examples)
+        os.rename(temp_filename, filename)
+        filenames.append(filename)
+    else:
+        i_split = 0
+        end_gn = False
+        temp_filenames = []
+        while not end_gn:
+            temp_filename = tfimgrec_name(prefix, '000', channels, num_classes, index=i_split)
+            writer = tf.python_io.TFRecordWriter(temp_filename)
+            for _ in range(num_examples_per_file):
+                try:
+                    print(f'{num_examples} records written')
+                    x_raw = x.astype(np.float32).tostring()
+                    label = y.astype(np.float32) if num_classes == 0 else y.astype(np.int64)
+                    height, width = x.shape[:2]
+                    if num_classes == 0:
+                        example = tf.train.Example(features=tf.train.Features(feature={
+                            'feature': _bytes_feature(x_raw),
+                            'label': _float_feature(label),
+                            'height': _int64_feature(height),
+                            'width': _int64_feature(width)
+                        }))
+                    else:
+                        example = tf.train.Example(features=tf.train.Features(feature={
+                            'feature': _bytes_feature(x_raw),
+                            'label': _int64_feature(label),
+                            'height': _int64_feature(height),
+                            'width': _int64_feature(width)
+                        }))
+                    writer.write(example.SerializeToString())
+                    x, y = next(gn)
+                    num_examples += 1
+                except StopIteration:
+                    end_gn = True
+                    break
+            writer.close()
+            temp_filenames.append(temp_filename)
+            i_split += 1
+        for fnm in temp_filenames:
+            filename = _convert_to_real_name(fnm, num_examples)
+            os.rename(fnm, filename)
+            filenames.append(filename)
+    return filenames
 
 
+def write_tfimgrec_pred_from_generator(gn, prefix, num_examples_per_file=None):
+    filenames = []
+    x = next(gn)
+    num_examples = 1
+    channels = x.shape[-1]
+    if num_examples_per_file is None:
+        temp_filename = tfimgrec_pred_name(prefix, '000', channels)
+        writer = tf.python_io.TFRecordWriter(temp_filename)
+        while True:
+            try:
+                print(f'{num_examples} records written')
+                x_raw = x.astype(np.float32).tostring()
+                height, width = x.shape[:2]
+                example = tf.train.Example(features=tf.train.Features(feature={
+                    'feature': _bytes_feature(x_raw),
+                    'height': _int64_feature(height),
+                    'width': _int64_feature(width)
+                }))
+                writer.write(example.SerializeToString())
+                x = next(gn)
+                num_examples += 1
+            except StopIteration:
+                break
+        writer.close()
+        filename = _convert_to_real_name(temp_filename, num_examples)
+        os.rename(temp_filename, filename)
+        filenames.append(filename)
+    else:
+        i_split = 0
+        end_gn = False
+        temp_filenames = []
+        while not end_gn:
+            temp_filename = tfimgrec_pred_name(prefix, '000', channels, index=i_split)
+            writer = tf.python_io.TFRecordWriter(temp_filename)
+            for _ in range(num_examples_per_file):
+                try:
+                    print(f'{num_examples} records written')
+                    x_raw = x.astype(np.float32).tostring()
+                    height, width = x.shape[:2]
+                    example = tf.train.Example(features=tf.train.Features(feature={
+                        'feature': _bytes_feature(x_raw),
+                        'height': _int64_feature(height),
+                        'width': _int64_feature(width)
+                    }))
+                    writer.write(example.SerializeToString())
+                    x = next(gn)
+                    num_examples += 1
+                except StopIteration:
+                    end_gn = True
+                    break
+            writer.close()
+            temp_filenames.append(temp_filename)
+            i_split += 1
+        for fnm in temp_filenames:
+            filename = _convert_to_real_name(fnm, num_examples)
+            os.rename(fnm, filename)
+            filenames.append(filename)
+    return filenames
 
 
+def _dataset_gn(sess, iterator):
+    while True:
+        try:
+            yield sess.run(iterator)
+        except tf.errors.OutOfRangeError:
+            return
 
 
+def _get_prefix(filename):
+    dirpath = os.path.split(filename)[0]
+    nm = os.path.basename(filename).split('.')[0]
+    return f'{dirpath}/{nm}'
 
+
+def get_index(filename, ext):
+    index = filename.split(ext)[-1]
+    if index == '':
+        return None
+    else:
+        return int(index)
+
+
+def convert_tfimgrec_to_tfrec(sess, filenames, shape, shape_enlarge=True, normalization=True):
+    if isinstance(filenames, str):
+        filenames = [filenames]
+    filename_parsed = parse_tfrec_name(filenames[0])
+    num_examples = filename_parsed[1]
+    channels = filename_parsed[2]
+    ds_shape = [num_examples, *shape, channels]
+    is_pred = not filename_parsed[0]
+    is_reg = False
+    if not is_pred and filename_parsed[-1] == 0:
+        is_reg = True
+
+    out_filenames = []
+    for fnm in filenames:
+        dataset = tf.data.TFRecordDataset(fnm)
+        ds = dataset.map(_parse_tfimgrec(channels, shape, shape_enlarge, normalization, is_pred, is_reg))
+        iterator = ds.make_one_shot_iterator()
+        dsgn = iterator.get_next()
+        gn = _dataset_gn(sess, dsgn)
+        prefix = _get_prefix(fnm)
+        index = get_index(fnm, 'tfimgrec')
+        temp_prefix = f'{prefix}_tmp'
+        if is_pred:
+            temp_filenames = write_tfrec_pred_from_generator(gn, temp_prefix)
+            out_filename = tfrec_pred_name(prefix, ds_shape, index)
+        else:
+            num_classes = filename_parsed[-1]
+            temp_filenames = write_tfrec_from_generator(gn, temp_prefix, num_classes)
+            out_filename = tfrec_name(prefix, ds_shape, num_classes, index)
+        print(f'converting {fnm} to {out_filename}')
+        os.rename(temp_filenames[0], out_filename)
+        out_filenames.append(out_filename)
+    return out_filenames
