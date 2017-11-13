@@ -212,11 +212,14 @@ def parse_tfrec_name(fname):
             return (with_label, ds_shape)
 
 
-def read_tfrec(filenames, batch_size, num_epochs=None, shuffle=True):
+def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True):
     if isinstance(filenames, str):
         filenames = [filenames]
     filename_parsed = parse_tfrec_name(filenames[0])
     ds_shape = filename_parsed[1]
+    num_examples = ds_shape[0]
+    if batch_size is None:
+        batch_size = num_examples
     is_pred = not filename_parsed[0]
     is_reg = False
     if not is_pred and filename_parsed[-1] == 0:
@@ -246,11 +249,14 @@ def read_raw_tfimgrec(filenames, num_epochs=None):
     return iterator.get_next()
 
 
-def read_tfimgrec(filenames, shape, batch_size, num_epochs=None, shuffle=True, shape_enlarge=True,
+def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=True, shape_enlarge=True,
                   normalization=True):
     if isinstance(filenames, str):
         filenames = [filenames]
     filename_parsed = parse_tfrec_name(filenames[0])
+    num_examples = filename_parsed[1]
+    if batch_size is None:
+        batch_size = num_examples
     channels = filename_parsed[2]
     is_pred = not filename_parsed[0]
     is_reg = False
