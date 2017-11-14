@@ -1,6 +1,9 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
+from collections import namedtuple
 from tempfile import NamedTemporaryFile
+from progress.bar import Bar
 from tensorflow.python.tools import freeze_graph
 
 
@@ -138,3 +141,61 @@ def load_model_pb(pb_path, input_node_name_lst, output_node_name_lst):
     input_nodes = [g.get_tensor_by_name(f'{nm}:0') for nm in input_node_name_lst]
     output_nodes = [g.get_tensor_by_name(f'{nm}:0') for nm in output_node_name_lst]
     return input_nodes, output_nodes
+
+
+training_tensors = namedtuple('training_tensors', ('features', 'labels', 'xpl', 'ypl', 'loss',
+                                                   'train_op', 'correct_num', 'accuracy'))
+testing_tensors = namedtuple('testing_tensors', ('features', 'labels', 'xpl', 'ypl', 'correct_num'))
+predicting_tensors = namedtuple('predicting_tensors', ('features', 'xpl', 'logits'))
+
+
+def predicting_cls(sess, predicting_t):
+    logits_lst = []
+    while True:
+        try:
+            xb = sess.run([predicting_t.features])
+            logits = sess.run(predicting_t.logits, feed_dict={predicting_t.xpl: xb})
+            logits_lst.append(logits)
+        except tf.errors.OutOfRangeError:
+            break
+    return np.concatenate(logits_lst, axis=0)
+
+
+def training_cls(sess, training_t, num_examples, batch_size, n_epochs, saver=None, model_path=None):
+    loss_value_lst = []
+    num_steps_per_epoch = num_examples // batch_size
+    for epoch in range(n_epochs):
+        loss_value = 0
+        correct_num_value = 0
+        bar = Bar(f'Epoch {epoch+1}', max=num_steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for i in range(num_steps_per_epoch):
+            xb, yb = sess.run([training_t.features, training_t.labels])
+            feed_dict = {training_t.xpl: xb, training_t.ypl: yb}
+            _, loss_value, correct_num_value, accuracy_value = sess.run([training_t.train_op, training_t.loss,
+                                                                         training_t.correct_num, training_t.accuracy],
+                                                                        feed_dict=feed_dict)
+            bar.next()
+        bar.finish()
+        print(f'Epoch {epoch+1}: {loss_value}; {correct_num_value} / {batch_size}; {accuracy_value}')
+        loss_value_lst.append(loss_value)
+        if saver is not None:
+            saver.save(sess, model_path, global_step=epoch)
+
+
+def testing_cls(sess, testing_t, num_examples):
+    total_correct_num = 0
+    bar = Bar(f'Testing: ', max=num_examples, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+    while True:
+        try:
+            xb, yb = sess.run([testing_t.features, testing_t.labels])
+            correct_num_value = sess.run(testing_t.correct_num, feed_dict={testing_t.xpl: xb, testing_t.ypl: yb})
+            total_correct_num += correct_num_value
+            mini_size = xb.shape[0]
+            for _ in range(mini_size):
+                bar.next()
+        except tf.errors.OutOfRangeError:
+            bar.finish()
+            break
+    acc = total_correct_num / num_examples
+    print(f'Accuracy: {acc}')
+    return acc
