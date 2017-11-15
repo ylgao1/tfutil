@@ -212,7 +212,7 @@ def parse_tfrec_name(fname):
             return (with_label, ds_shape)
 
 
-def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True):
+def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True, is_test=False):
     if isinstance(filenames, str):
         filenames = [filenames]
     filename_parsed = parse_tfrec_name(filenames[0])
@@ -226,12 +226,19 @@ def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True):
         is_reg = True
     dataset = tf.data.TFRecordDataset(filenames)
     ds = dataset.map(_parse_tfrec(ds_shape[1:], is_pred, is_reg))
+    if is_test:
+        shuffle = False
+        num_epochs = 1
     if shuffle:
         ds = ds.shuffle(buffer_size=batch_size * 3)
     ds = ds.batch(batch_size)
     ds = ds.repeat(num_epochs)
-    iterator = ds.make_one_shot_iterator()
-    return iterator.get_next()
+    if is_test:
+        iterator = ds.make_initializable_iterator()
+        return iterator.get_next(), iterator.initializer
+    else:
+        iterator = ds.make_one_shot_iterator()
+        return iterator.get_next()
 
 
 def read_raw_tfimgrec(filenames, num_epochs=None):
@@ -250,7 +257,7 @@ def read_raw_tfimgrec(filenames, num_epochs=None):
 
 
 def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=True, shape_enlarge=True,
-                  normalization=True):
+                  normalization=True, is_test=False):
     if isinstance(filenames, str):
         filenames = [filenames]
     filename_parsed = parse_tfrec_name(filenames[0])
@@ -264,12 +271,19 @@ def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=Tr
         is_reg = True
     dataset = tf.data.TFRecordDataset(filenames)
     ds = dataset.map(_parse_tfimgrec(channels, shape, shape_enlarge, normalization, is_pred, is_reg))
+    if is_test:
+        shuffle = False
+        num_epochs = 1
     if shuffle:
         ds = ds.shuffle(buffer_size=batch_size * 3)
     ds = ds.batch(batch_size)
     ds = ds.repeat(num_epochs)
-    iterator = ds.make_one_shot_iterator()
-    return iterator.get_next()
+    if is_test:
+        iterator = ds.make_initializable_iterator()
+        return iterator.get_next(), iterator.initializer
+    else:
+        iterator = ds.make_one_shot_iterator()
+        return iterator.get_next()
 
 
 def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_file=None):
