@@ -220,6 +220,7 @@ def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True, is_tes
     num_examples = ds_shape[0]
     if batch_size is None:
         batch_size = num_examples
+    steps_per_epoch = int(np.ceil(num_examples / batch_size))
     is_pred = not filename_parsed[0]
     is_reg = False
     if not is_pred and filename_parsed[-1] == 0:
@@ -238,7 +239,7 @@ def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True, is_tes
         return iterator.get_next(), iterator.initializer
     else:
         iterator = ds.make_one_shot_iterator()
-        return iterator.get_next()
+        return iterator.get_next(), steps_per_epoch
 
 
 def read_raw_tfimgrec(filenames, num_epochs=None):
@@ -264,6 +265,7 @@ def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=Tr
     num_examples = filename_parsed[1]
     if batch_size is None:
         batch_size = num_examples
+    steps_per_epoch = int(np.ceil(num_examples / batch_size))
     channels = filename_parsed[2]
     is_pred = not filename_parsed[0]
     is_reg = False
@@ -283,7 +285,35 @@ def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=Tr
         return iterator.get_next(), iterator.initializer
     else:
         iterator = ds.make_one_shot_iterator()
-        return iterator.get_next()
+        return iterator.get_next(), steps_per_epoch
+
+
+def read_tfrec_array(arrs, batch_size=None, num_epochs=None, shuffle=True, is_test=False, is_reg=False):
+    if isinstance(arrs, tuple) or isinstance(arrs, list):
+        x, y = arrs
+        x = x.astype(np.float32)
+        y = y.astype(np.float32) if is_reg else y.astype(np.int64)
+        ds_x = tf.data.Dataset.from_tensor_slices(x)
+        ds_y = tf.data.Dataset.from_tensor_slices(y)
+        ds = tf.data.Dataset.zip((ds_x, ds_y))
+    else:
+        x = arrs.astype(np.float32)
+        ds = tf.data.Dataset.from_tensor_slices(x)
+    num_examples = x.shape[0]
+    steps_per_epoch = int(np.ceil(num_examples / batch_size))
+    if is_test:
+        shuffle = False
+        num_epochs = 1
+    if shuffle:
+        ds = ds.shuffle(buffer_size=batch_size * 3)
+    ds = ds.batch(batch_size)
+    ds = ds.repeat(num_epochs)
+    if is_test:
+        iterator = ds.make_initializable_iterator()
+        return iterator.get_next(), iterator.initializer
+    else:
+        iterator = ds.make_one_shot_iterator()
+        return iterator.get_next(), steps_per_epoch
 
 
 def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_file=None):
