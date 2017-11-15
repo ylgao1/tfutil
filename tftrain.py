@@ -65,7 +65,8 @@ def create_init_op():
     return init_op
 
 
-def create_train_op(total_loss, optimizer, max_grad_norm=None, global_step=None):
+def create_train_op(total_loss, optimizer, max_grad_norm=None):
+    global_step = tf.train.get_or_create_global_step()
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         if max_grad_norm is None:
@@ -78,8 +79,8 @@ def create_train_op(total_loss, optimizer, max_grad_norm=None, global_step=None)
 
 def cal_accuracy(logits, label_pl, top_k=1):
     top_k_op = tf.nn.in_top_k(logits, label_pl, top_k)
-    correct_num = tf.reduce_sum(tf.cast(top_k_op, tf.int32), name='correct_num')
-    accuracy = tf.reduce_mean(tf.cast(top_k_op, tf.float32), name='accuracy')
+    correct_num = tf.reduce_sum(tf.cast(top_k_op, tf.int32))
+    accuracy = tf.reduce_mean(tf.cast(top_k_op, tf.float32))
     return correct_num, accuracy
 
 
