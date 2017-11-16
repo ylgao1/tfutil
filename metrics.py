@@ -11,7 +11,9 @@ def add_reset_op(sc=None):
                 vars = tf.contrib.framework.get_variables(
                     scope.original_name_scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
                 reset_op = tf.variables_initializer(vars)
-            return metric_op, update_op, reset_op, vars
+                with tf.control_dependencies([reset_op]):
+                    one_shot_op = tf.identity(update_op)
+            return metric_op, update_op, reset_op, one_shot_op
 
         return wrapper
 

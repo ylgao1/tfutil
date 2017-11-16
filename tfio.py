@@ -300,6 +300,8 @@ def read_tfrec_array(arrs, batch_size=None, num_epochs=None, shuffle=True, is_te
         x = arrs.astype(np.float32)
         ds = tf.data.Dataset.from_tensor_slices(x)
     num_examples = x.shape[0]
+    if batch_size is None:
+        batch_size = num_examples
     steps_per_epoch = int(np.ceil(num_examples / batch_size))
     if is_test:
         shuffle = False

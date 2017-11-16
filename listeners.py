@@ -20,7 +20,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
-        acc, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(self._logits, axis=1))
+        _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(self._logits, axis=1))
         self.reset_op.append(acc_reset_op)
         self.update_op.append(acc_update_op)
         summ_acc_te = tf.summary.scalar('test/accuracy', self.acc_pl)
