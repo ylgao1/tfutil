@@ -48,6 +48,39 @@ def _parse_tfrec(shape, is_pred=False, is_reg=False):
     return _parse_function
 
 
+def _parse_tfrec_img(height, width, channels, resize, resize_enlarge, normalization, is_pred=False, is_reg=False):
+    if is_pred:
+        def _parse_function(example_proto):
+            dataset = tf.parse_single_example(example_proto, features={
+                'feature': tf.FixedLenFeature([], dtype=tf.string),
+            })
+            feature = tf.decode_raw(dataset['feature'], tf.float32)
+            resized_feature = _resize_img(feature, height, width, channels, resize, resize_enlarge, normalization)
+            return resized_feature
+    else:
+        if is_reg:
+            def _parse_function(example_proto):
+                dataset = tf.parse_single_example(example_proto, features={
+                    'feature': tf.FixedLenFeature([], dtype=tf.string),
+                    'label': tf.FixedLenFeature([], dtype=tf.float32),
+                })
+                feature = tf.decode_raw(dataset['feature'], tf.float32)
+                label = dataset['label']
+                resized_feature = _resize_img(feature, height, width, channels, resize, resize_enlarge, normalization)
+                return resized_feature, label
+        else:
+            def _parse_function(example_proto):
+                dataset = tf.parse_single_example(example_proto, features={
+                    'feature': tf.FixedLenFeature([], dtype=tf.string),
+                    'label': tf.FixedLenFeature([], dtype=tf.int64),
+                })
+                feature = tf.decode_raw(dataset['feature'], tf.float32)
+                label = tf.cast(dataset['label'], tf.int32)
+                resized_feature = _resize_img(feature, height, width, channels, resize, resize_enlarge, normalization)
+                return resized_feature, label
+    return _parse_function
+
+
 def _parse_raw_tfimgrec(is_pred=False, is_reg=False):
     if is_pred:
         def _parse_function(example_proto):
@@ -227,6 +260,37 @@ def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True, is_tes
         is_reg = True
     dataset = tf.data.TFRecordDataset(filenames)
     ds = dataset.map(_parse_tfrec(ds_shape[1:], is_pred, is_reg))
+    if is_test:
+        shuffle = False
+        num_epochs = 1
+    if shuffle:
+        ds = ds.shuffle(buffer_size=batch_size * 3)
+    ds = ds.batch(batch_size)
+    ds = ds.repeat(num_epochs)
+    if is_test:
+        iterator = ds.make_initializable_iterator()
+        return iterator.get_next(), iterator.initializer
+    else:
+        iterator = ds.make_one_shot_iterator()
+        return iterator.get_next(), steps_per_epoch
+
+
+def read_tfrec_img(filenames, shape, batch_size=None, num_epochs=None, shuffle=True,
+                   shape_enlarge=True, normalization=True, is_test=False):
+    if isinstance(filenames, str):
+        filenames = [filenames]
+    filename_parsed = parse_tfrec_name(filenames[0])
+    ds_shape = filename_parsed[1]
+    num_examples, height, width, channels = ds_shape
+    if batch_size is None:
+        batch_size = num_examples
+    steps_per_epoch = int(np.ceil(num_examples / batch_size))
+    is_pred = not filename_parsed[0]
+    is_reg = False
+    if not is_pred and filename_parsed[-1] == 0:
+        is_reg = True
+    dataset = tf.data.TFRecordDataset(filenames)
+    ds = dataset.map(_parse_tfrec_img(height, width, channels, shape, shape_enlarge, normalization, is_pred, is_reg))
     if is_test:
         shuffle = False
         num_epochs = 1

@@ -41,7 +41,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
                 break
         step = global_step_value // self._steps_per_epoch
         summ = session.run(self.summ_op, feed_dict={self.acc_pl: metrics[0]})
-        print(f'Epoch {step}')
+        print(f'\nEpoch {step}')
         print(f'Accuracy: {metrics[0]}')
         self.fw.add_summary(summ, global_step=step)
         self.fw.flush()
@@ -97,7 +97,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         step = global_step_value // self._steps_per_epoch
         metrics_fd = {k:v for k, v in zip([self.acc_pl, self.roc_pl, self.pr_pl], metrics)}
         summ = session.run(self.summ_op, feed_dict=metrics_fd)
-        print(f'Epoch {step}')
+        print(f'\nEpoch {step}')
         print(f'Accuracy: {metrics[0]}')
         print(f'ROC-AUC: {metrics[1]}')
         print(f'PR-AUC: {metrics[2]}')
