@@ -184,7 +184,7 @@ class TFModel:
             elif training_type == 1:
                 listener_class = BinaryClsTestListerner
             listener = listener_class(test_logdir, gnte,
-                                      self._inputs, self._targets, self._is_training, self._logits, steps_per_epoch)
+                                      self._inputs, self._targets, self._is_training, self._logits)
             listeners.append(listener)
         hooks = [
             tf.train.CheckpointSaverHook(checkpoint_dir=self._checkpoint_dir, save_steps=steps_per_epoch,
@@ -214,43 +214,43 @@ class TFModel:
                 bar.finish()
 
     def predict(self, gnte_pred):
-        data_gn, data_gn_init_op = gnte_pred
+        data_gn, data_gn_init_op, steps_per_epoch = gnte_pred
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
         sess = self._sess
         sess.run(data_gn_init_op)
-        while True:
-            try:
-                xb = sess.run(data_gn)
-                fd = {self._inputs: xb, self._is_training: False}
-                logits_val = sess.run(self._logits, feed_dict=fd)
-                logits_lst.append(logits_val)
-            except tf.errors.OutOfRangeError:
-                break
+        bar = Bar('Test predict', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(steps_per_epoch):
+            bar.next()
+            xb = sess.run(data_gn)
+            fd = {self._inputs: xb, self._is_training: False}
+            logits_val = sess.run(self._logits, feed_dict=fd)
+            logits_lst.append(logits_val)
+        bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
         return logits
 
     def predict_from_array(self, x, batch_size=None):
-        data_gn, data_gn_init_op = read_tfrec_array(x, batch_size=batch_size, is_test=True)
+        data_gn, data_gn_init_op, steps_per_epoch = read_tfrec_array(x, batch_size=batch_size, is_test=True)
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
         sess = self._sess
         sess.run(data_gn_init_op)
-        while True:
-            try:
-                xb = sess.run(data_gn)
-                fd = {self._inputs: xb, self._is_training: False}
-                logits_val = sess.run(self._logits, feed_dict=fd)
-                logits_lst.append(logits_val)
-            except tf.errors.OutOfRangeError:
-                break
+        bar = Bar('Test predict', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(steps_per_epoch):
+            bar.next()
+            xb = sess.run(data_gn)
+            fd = {self._inputs: xb, self._is_training: False}
+            logits_val = sess.run(self._logits, feed_dict=fd)
+            logits_lst.append(logits_val)
+        bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
         return logits
 
     def eval(self, metrics_ops, gnte):
-        data_gn, data_gn_init_op = gnte
+        data_gn, data_gn_init_op, steps_per_epoch = gnte
         if not isinstance(metrics_ops[0], tuple):
             metrics_ops = [metrics_ops]
         _, update_ops, reset_ops, _ = list(zip(*metrics_ops))
@@ -261,19 +261,19 @@ class TFModel:
         sess.run(data_gn_init_op)
         sess.run(reset_ops)
         metrics = None
-        while True:
-            try:
-                xb, yb = sess.run(data_gn)
-                fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
-                logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
-                logits_lst.append(logits_val)
-            except tf.errors.OutOfRangeError:
-                break
+        bar = Bar('Test evaluation', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(steps_per_epoch):
+            bar.next()
+            xb, yb = sess.run(data_gn)
+            fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
+            logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
+            logits_lst.append(logits_val)
+        bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
         return logits, metrics
 
     def eval_from_array(self, metrics_ops, x, y, batch_size=None):
-        data_gn, data_gn_init_op = read_tfrec_array((x, y), batch_size=batch_size, is_test=True)
+        data_gn, data_gn_init_op, steps_per_epoch = read_tfrec_array((x, y), batch_size=batch_size, is_test=True)
         if not isinstance(metrics_ops[0], tuple):
             metrics_ops = [metrics_ops]
         _, update_ops, reset_ops, _ = list(zip(*metrics_ops))
@@ -284,13 +284,13 @@ class TFModel:
         sess.run(data_gn_init_op)
         sess.run(reset_ops)
         metrics = None
-        while True:
-            try:
-                xb, yb = sess.run(data_gn)
-                fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
-                logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
-                logits_lst.append(logits_val)
-            except tf.errors.OutOfRangeError:
-                break
+        bar = Bar('Test evaluation', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(steps_per_epoch):
+            bar.next()
+            xb, yb = sess.run(data_gn)
+            fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
+            logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
+            logits_lst.append(logits_val)
+        bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
         return logits, metrics

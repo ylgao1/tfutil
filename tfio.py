@@ -269,7 +269,7 @@ def read_tfrec(filenames, batch_size=None, num_epochs=None, shuffle=True, is_tes
     ds = ds.repeat(num_epochs)
     if is_test:
         iterator = ds.make_initializable_iterator()
-        return iterator.get_next(), iterator.initializer
+        return iterator.get_next(), iterator.initializer, steps_per_epoch
     else:
         iterator = ds.make_one_shot_iterator()
         return iterator.get_next(), steps_per_epoch
@@ -300,7 +300,7 @@ def read_tfrec_img(filenames, shape, batch_size=None, num_epochs=None, shuffle=T
     ds = ds.repeat(num_epochs)
     if is_test:
         iterator = ds.make_initializable_iterator()
-        return iterator.get_next(), iterator.initializer
+        return iterator.get_next(), iterator.initializer, steps_per_epoch
     else:
         iterator = ds.make_one_shot_iterator()
         return iterator.get_next(), steps_per_epoch
@@ -346,7 +346,7 @@ def read_tfimgrec(filenames, shape, batch_size=None, num_epochs=None, shuffle=Tr
     ds = ds.repeat(num_epochs)
     if is_test:
         iterator = ds.make_initializable_iterator()
-        return iterator.get_next(), iterator.initializer
+        return iterator.get_next(), iterator.initializer, steps_per_epoch
     else:
         iterator = ds.make_one_shot_iterator()
         return iterator.get_next(), steps_per_epoch
@@ -376,7 +376,7 @@ def read_tfrec_array(arrs, batch_size=None, num_epochs=None, shuffle=True, is_te
     ds = ds.repeat(num_epochs)
     if is_test:
         iterator = ds.make_initializable_iterator()
-        return iterator.get_next(), iterator.initializer
+        return iterator.get_next(), iterator.initializer, steps_per_epoch
     else:
         iterator = ds.make_one_shot_iterator()
         return iterator.get_next(), steps_per_epoch

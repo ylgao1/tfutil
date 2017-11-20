@@ -1,22 +1,23 @@
 import tensorflow as tf
 from .metrics import *
+from progress.bar import Bar
 
 
 class MultiClsTestListerner(tf.train.CheckpointSaverListener):
-    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits, steps_per_epoch):
+    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits):
         super(MultiClsTestListerner, self).__init__()
         self._logdir = logdir
         self._inputs = inputs
         self._targets = targets
         self._is_traing = is_training
         self._logits = logits
-        self._data_gn, self._data_initializer = data_gn
+        self._data_gn, self._data_initializer, self._steps_per_epoch = data_gn
         self.fw = None
         self.reset_op = []
         self.update_op = []
         self.summ_op = None
         self.acc_pl = tf.placeholder(dtype=tf.float32)
-        self._steps_per_epoch = steps_per_epoch
+        self.idx = -1
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
@@ -32,18 +33,17 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
     def after_save(self, session, global_step_value):
         metrics = None
-        while True:
-            try:
-                xb, yb = session.run(self._data_gn)
-                metrics = session.run(self.update_op,
-                                      feed_dict={self._inputs: xb, self._targets: yb, self._is_traing: False})
-            except tf.errors.OutOfRangeError:
-                break
-        step = global_step_value // self._steps_per_epoch
+        self.idx += 1
+        bar = Bar(f'Test evaluation {self.idx}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(self._steps_per_epoch):
+            bar.next()
+            xb, yb = session.run(self._data_gn)
+            metrics = session.run(self.update_op,
+                                  feed_dict={self._inputs: xb, self._targets: yb, self._is_traing: False})
+        bar.finish()
         summ = session.run(self.summ_op, feed_dict={self.acc_pl: metrics[0]})
-        print(f'\nEpoch {step}')
         print(f'Accuracy: {metrics[0]}')
-        self.fw.add_summary(summ, global_step=step)
+        self.fw.add_summary(summ, global_step=self.idx)
         self.fw.flush()
 
     def end(self, session, global_step_value):
@@ -51,14 +51,14 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
 
 class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
-    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits, steps_per_epoch):
+    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits):
         super(BinaryClsTestListerner, self).__init__()
         self._logdir = logdir
         self._inputs = inputs
         self._targets = targets
         self._is_traing = is_training
         self._logits = logits
-        self._data_gn, self._data_initializer = data_gn
+        self._data_gn, self._data_initializer, self._steps_per_epoch = data_gn
         self.fw = None
         self.reset_op = []
         self.update_op = []
@@ -66,7 +66,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         self.acc_pl = tf.placeholder(dtype=tf.float32)
         self.roc_pl = tf.placeholder(dtype=tf.float32)
         self.pr_pl = tf.placeholder(dtype=tf.float32)
-        self._steps_per_epoch = steps_per_epoch
+        self.idx = -1
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
@@ -87,21 +87,20 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
 
     def after_save(self, session, global_step_value):
         metrics = None
-        while True:
-            try:
-                xb, yb = session.run(self._data_gn)
-                metrics = session.run(self.update_op,
-                                      feed_dict={self._inputs: xb, self._targets: yb, self._is_traing: False})
-            except tf.errors.OutOfRangeError:
-                break
-        step = global_step_value // self._steps_per_epoch
-        metrics_fd = {k:v for k, v in zip([self.acc_pl, self.roc_pl, self.pr_pl], metrics)}
+        self.idx += 1
+        bar = Bar(f'Test evaluation {self.idx}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        for _ in range(self._steps_per_epoch):
+            bar.next()
+            xb, yb = session.run(self._data_gn)
+            metrics = session.run(self.update_op,
+                                  feed_dict={self._inputs: xb, self._targets: yb, self._is_traing: False})
+        bar.finish()
+        metrics_fd = {k: v for k, v in zip([self.acc_pl, self.roc_pl, self.pr_pl], metrics)}
         summ = session.run(self.summ_op, feed_dict=metrics_fd)
-        print(f'\nEpoch {step}')
         print(f'Accuracy: {metrics[0]}')
         print(f'ROC-AUC: {metrics[1]}')
         print(f'PR-AUC: {metrics[2]}')
-        self.fw.add_summary(summ, global_step=step)
+        self.fw.add_summary(summ, global_step=self.idx)
         self.fw.flush()
 
     def end(self, session, global_step_value):
