@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from tensorflow.contrib import copy_graph
 
 
 def cal_num_parameters():
@@ -24,3 +25,9 @@ def read_events_file(events_filename):
             else:
                 dt[e.tag] = [e.simple_value]
     return dt
+
+
+def create_op_graph(op):
+    g = tf.Graph()
+    copy_graph.copy_op_to_graph(op, g, [])
+    return g

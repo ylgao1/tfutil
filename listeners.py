@@ -17,7 +17,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
         self.update_op = []
         self.summ_op = None
         self.acc_pl = tf.placeholder(dtype=tf.float32)
-        self.idx = -1
+        self.idx = 0
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
@@ -66,7 +66,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         self.acc_pl = tf.placeholder(dtype=tf.float32)
         self.roc_pl = tf.placeholder(dtype=tf.float32)
         self.pr_pl = tf.placeholder(dtype=tf.float32)
-        self.idx = -1
+        self.idx = 0
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
