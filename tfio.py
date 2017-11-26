@@ -382,6 +382,59 @@ def read_tfrec_array(arrs, batch_size=None, num_epochs=None, shuffle=True, is_te
         return iterator.get_next(), steps_per_epoch
 
 
+def balanced_read_tfrec_array(x, y, batch_size=None, num_epochs=None):
+    x = x.astype(np.float32)
+    y = y.astype(np.int32)
+    num_classes = len(set(y))
+    batch_per_class = batch_size // num_classes
+    x_lst, y_lst = list(zip(*[(x[y == i], y[y == i]) for i in range(num_classes)]))
+
+    max_examples_per_class = np.max([len(yc) for yc in y_lst])
+    idx_res = [max_examples_per_class - len(yc) for yc in y_lst]
+    idx_ori_lst = [np.arange(len(yc)).tolist() for yc in y_lst]
+    N = max_examples_per_class // batch_per_class
+    res = max_examples_per_class % batch_per_class
+    steps_per_epoch = N + 1 if res != 0 else N
+
+    def gen():
+        idx_lst = [idx_ori_lst[i] + np.random.choice(idx_ori_lst[i], idx_res[i]).tolist() for i in range(num_classes)]
+        for idx in idx_lst:
+            np.random.shuffle(idx)
+        for i in range(N):
+            xc_lst = []
+            yc_lst = []
+            for c in range(num_classes):
+                xb, yb = x_lst[c], y_lst[c]
+                idx = idx_lst[c]
+                ib = idx[i * batch_per_class: (i + 1) * batch_per_class]
+                xc = xb[ib]
+                yc = yb[ib]
+                xc_lst.append(xc)
+                yc_lst.append(yc)
+            xc = np.concatenate(xc_lst, axis=0)
+            yc = np.concatenate(yc_lst, axis=0)
+            yield xc, yc
+        if res != 0:
+            xc_lst = []
+            yc_lst = []
+            for c in range(num_classes):
+                xb, yb = x_lst[c], y_lst[c]
+                idx = idx_lst[c]
+                ib = idx[-res:]
+                xc = xb[ib]
+                yc = yb[ib]
+                xc_lst.append(xc)
+                yc_lst.append(yc)
+            xc = np.concatenate(xc_lst, axis=0)
+            yc = np.concatenate(yc_lst, axis=0)
+            yield xc, yc
+
+    ds = tf.data.Dataset.from_generator(gen, output_types=(tf.float32, tf.int32))
+    ds = ds.repeat(num_epochs)
+    iterator = ds.make_one_shot_iterator()
+    return iterator.get_next(), steps_per_epoch
+
+
 def write_tfrec_from_array(arr_x, arr_y, prefix, num_classes, num_examples_per_file=None):
     arr_x = arr_x.astype(np.float32)
     arr_y = arr_y.astype(np.float32) if num_classes == 0 else arr_y.astype(np.int64)
