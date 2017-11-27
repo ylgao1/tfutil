@@ -1,10 +1,11 @@
 import tensorflow as tf
 from .metrics import *
 from progress.bar import Bar
+from tensorflow.python.training.summary_io import SummaryWriterCache
 
 
 class MultiClsTestListerner(tf.train.CheckpointSaverListener):
-    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits):
+    def __init__(self, logdir, data_gn, training_steps_per_epoch, inputs, targets, is_training, logits):
         super(MultiClsTestListerner, self).__init__()
         self._logdir = logdir
         self._inputs = inputs
@@ -12,15 +13,15 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
         self._is_traing = is_training
         self._logits = logits
         self._data_gn, self._data_initializer, self._steps_per_epoch = data_gn
+        self._training_steps_per_epoch = training_steps_per_epoch
         self.fw = None
         self.reset_op = []
         self.update_op = []
         self.summ_op = None
         self.acc_pl = tf.placeholder(dtype=tf.float32)
-        self.idx = 0
 
     def begin(self):
-        self.fw = tf.summary.FileWriter(self._logdir)
+        self.fw = SummaryWriterCache.get(self._logdir)
         _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(self._logits, axis=1))
         self.reset_op.append(acc_reset_op)
         self.update_op.append(acc_update_op)
@@ -33,8 +34,8 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
     def after_save(self, session, global_step_value):
         metrics = None
-        self.idx += 1
-        bar = Bar(f'Test evaluation {self.idx}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        epoch = global_step_value // self._training_steps_per_epoch
+        bar = Bar(f'Test evaluation {epoch}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
         for _ in range(self._steps_per_epoch):
             bar.next()
             xb, yb = session.run(self._data_gn)
@@ -43,7 +44,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
         bar.finish()
         summ = session.run(self.summ_op, feed_dict={self.acc_pl: metrics[0]})
         print(f'Accuracy: {metrics[0]}')
-        self.fw.add_summary(summ, global_step=self.idx)
+        self.fw.add_summary(summ, global_step=epoch)
         self.fw.flush()
 
     def end(self, session, global_step_value):
@@ -51,7 +52,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
 
 class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
-    def __init__(self, logdir, data_gn, inputs, targets, is_training, logits):
+    def __init__(self, logdir, data_gn, training_steps_per_epoch, inputs, targets, is_training, logits):
         super(BinaryClsTestListerner, self).__init__()
         self._logdir = logdir
         self._inputs = inputs
@@ -59,6 +60,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         self._is_traing = is_training
         self._logits = logits
         self._data_gn, self._data_initializer, self._steps_per_epoch = data_gn
+        self._training_steps_per_epoch = training_steps_per_epoch
         self.fw = None
         self.reset_op = []
         self.update_op = []
@@ -66,10 +68,9 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         self.acc_pl = tf.placeholder(dtype=tf.float32)
         self.roc_pl = tf.placeholder(dtype=tf.float32)
         self.pr_pl = tf.placeholder(dtype=tf.float32)
-        self.idx = 0
 
     def begin(self):
-        self.fw = tf.summary.FileWriter(self._logdir)
+        self.fw = SummaryWriterCache.get(self._logdir)
         probabilities = tf.nn.softmax(self._logits)
         _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(probabilities, axis=1))
         _, roc_update_op, roc_reset_op, _ = metrics_auc(self._targets, probabilities[:, 1], curve='ROC')
@@ -87,8 +88,8 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
 
     def after_save(self, session, global_step_value):
         metrics = None
-        self.idx += 1
-        bar = Bar(f'Test evaluation {self.idx}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
+        epoch = global_step_value // self._training_steps_per_epoch
+        bar = Bar(f'Test evaluation {epoch}', max=self._steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
         for _ in range(self._steps_per_epoch):
             bar.next()
             xb, yb = session.run(self._data_gn)
@@ -100,7 +101,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         print(f'Accuracy: {metrics[0]}')
         print(f'ROC-AUC: {metrics[1]}')
         print(f'PR-AUC: {metrics[2]}')
-        self.fw.add_summary(summ, global_step=self.idx)
+        self.fw.add_summary(summ, global_step=epoch)
         self.fw.flush()
 
     def end(self, session, global_step_value):

@@ -6,6 +6,7 @@ from .tfio import read_tfrec_array
 from .tftrain import load_ckpt, load_ckpt_path, create_init_op
 from progress.bar import Bar
 import numpy as np
+from tensorflow.python.training.summary_io import SummaryWriterCache
 
 ModelTensors = collections.namedtuple('ModelTensors',
                                       ('inputs', 'targets',
@@ -33,12 +34,11 @@ class TFModel:
     def train(self, train_op, gntr, num_epochs, gnte=None,
               summ_op=None, training_type=0,
               max_checkpoint_to_keep=10, summ_steps=100,
-              graph=None):
+              graph=None, from_scratch=True):
         """
         training_type:  0 for multi-class classification
                         1 for binary-class classification
         """
-        from_scratch = True
         if from_scratch:
             delete_and_make_dir(self._checkpoint_dir)
         global_step = tf.get_collection(tf.GraphKeys.GLOBAL_STEP)[0]
@@ -51,18 +51,22 @@ class TFModel:
                 listener_class = MultiClsTestListerner
             elif training_type == 1:
                 listener_class = BinaryClsTestListerner
-            listener = listener_class(test_logdir, gnte,
+            listener = listener_class(test_logdir, gnte, steps_per_epoch,
                                       self._inputs, self._targets, self._is_training, self._logits)
             listeners.append(listener)
 
         saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)
-        summ_writer = tf.summary.FileWriter(f'{self._checkpoint_dir}/train', graph)
+        summ_writer = SummaryWriterCache.get(f'{self._checkpoint_dir}/train')
+        if graph is not None:
+            summ_writer.add_graph(graph)
         if listeners:
             for l in listeners:
                 l.begin()
 
         with tf.Session() as sess:
             sess.run(create_init_op())
+            if not from_scratch:
+                load_ckpt(sess, model_dir=self._checkpoint_dir)
             global_step_value = sess.run(global_step)
             epoch = global_step_value // steps_per_epoch
             for _ in range(num_epochs):
