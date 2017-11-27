@@ -68,8 +68,8 @@ class TFModel:
             for _ in range(num_epochs):
                 bar = Bar(f'Epoch {epoch+1}', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
                 for _ in range(steps_per_epoch):
-                    bar.next()
                     xb, yb = sess.run(data_gntr)
+                    bar.next()
                     fd = {self._inputs: xb, self._targets: yb, self._is_training: True}
                     if global_step_value == 0:
                         summ = sess.run(summ_op, feed_dict=fd)
