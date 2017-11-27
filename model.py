@@ -56,7 +56,7 @@ class TFModel:
             listeners.append(listener)
 
         saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)
-        summ_writer = SummaryWriterCache.get(f'{self._checkpoint_dir}/train')
+        summ_writer = tf.summary.FileWriter(f'{self._checkpoint_dir}/train')
         if graph is not None:
             summ_writer.add_graph(graph)
         if listeners:
@@ -89,7 +89,7 @@ class TFModel:
                     for l in listeners:
                         l.before_save(sess, global_step_value)
 
-                saver.save(sess, f'{self._checkpoint_dir}/model.ckpt', global_step_value)
+                saver.save(sess, f'{self._checkpoint_dir}/model.ckpt', global_step_value, write_meta_graph=False)
                 if listeners:
                     for l in listeners:
                         l.after_save(sess, global_step_value)

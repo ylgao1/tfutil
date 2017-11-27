@@ -21,7 +21,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
         self.acc_pl = tf.placeholder(dtype=tf.float32)
 
     def begin(self):
-        self.fw = SummaryWriterCache.get(self._logdir)
+        self.fw = tf.summary.FileWriter(self._logdir)
         _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(self._logits, axis=1))
         self.reset_op.append(acc_reset_op)
         self.update_op.append(acc_update_op)
@@ -70,7 +70,7 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
         self.pr_pl = tf.placeholder(dtype=tf.float32)
 
     def begin(self):
-        self.fw = SummaryWriterCache.get(self._logdir)
+        self.fw = tf.summary.FileWriter(self._logdir)
         probabilities = tf.nn.softmax(self._logits)
         _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._targets, tf.argmax(probabilities, axis=1))
         _, roc_update_op, roc_reset_op, _ = metrics_auc(self._targets, probabilities[:, 1], curve='ROC')
