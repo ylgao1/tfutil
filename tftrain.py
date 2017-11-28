@@ -4,14 +4,13 @@ from tempfile import NamedTemporaryFile
 from tensorflow.python.tools import freeze_graph
 
 
-
-def loss(logits, label_pl, is_one_hot=False, scope=None):
+def loss(labels, logits, is_one_hot=False, scope=None):
     with tf.name_scope(scope):
         if is_one_hot:
-            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits))
         else:
             cross_entropy = tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=logits))
         regularization_loss_lst = tf.losses.get_regularization_losses()
         if len(regularization_loss_lst) == 0:
             regularization_loss = 0
@@ -21,17 +20,17 @@ def loss(logits, label_pl, is_one_hot=False, scope=None):
     return total_loss
 
 
-def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False, scope=None):
+def loss_with_aux(labels, logits, aux_logits, aux_weight=0.4, is_one_hot=False, scope=None):
     with tf.name_scope(scope):
         if is_one_hot:
-            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits))
             aux_cross_entropy = aux_weight * tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(labels=label_pl, logits=aux_logits))
+                tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=aux_logits))
         else:
             cross_entropy = tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=logits))
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=logits))
             aux_cross_entropy = aux_weight * tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_pl, logits=aux_logits))
+                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=aux_logits))
         regularization_loss_lst = tf.losses.get_regularization_losses()
         if len(regularization_loss_lst) == 0:
             regularization_loss = 0
@@ -41,22 +40,27 @@ def loss_with_aux(logits, aux_logits, label_pl, aux_weight=0.4, is_one_hot=False
     return total_loss
 
 
-def masked_sigmoid_cross_entropy(logits, target, mask, scope=None):
-    """Time major"""
+def masked_sigmoid_cross_entropy(labels, logits, masks, scope=None):
     with tf.name_scope(scope):
-        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=logits)
+        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
         loss_time_batch = tf.reduce_sum(xent, axis=2)
-        loss_batch = tf.reduce_sum(loss_time_batch * mask, axis=0)
+        loss_batch = tf.reduce_sum(loss_time_batch * masks, axis=1)
         loss = tf.reduce_mean(loss_batch)
     return loss
 
 
-def seq_sigmoid_cross_entropy(logits, target, scope=None):
-    """Time major"""
+def seq_sigmoid_cross_entropy(labels, logits, scope=None):
     with tf.name_scope(scope):
-        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=logits)
-        loss_time_batch = tf.reduce_sum(xent, axis=2)
-        loss_batch = tf.reduce_sum(loss_time_batch, axis=0)
+        xent = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
+        loss_batch = tf.reduce_sum(xent, axis=[1, 2])
+        loss = tf.reduce_mean(loss_batch)
+    return loss
+
+
+def seq_softmax_cross_entropy(labels, logits, scope=None):
+    with tf.name_scope(scope):
+        xent = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
+        loss_batch = tf.reduce_sum(xent, axis=1)
         loss = tf.reduce_mean(loss_batch)
     return loss
 

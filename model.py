@@ -9,14 +9,14 @@ import numpy as np
 from tensorflow.python.training.summary_io import SummaryWriterCache
 
 ModelTensors = collections.namedtuple('ModelTensors',
-                                      ('inputs', 'targets',
+                                      ('inputs', 'labels',
                                        'is_training', 'logits'))
 
 
 class TFModel:
     def __init__(self, model_tensors, checkpoint_dir=None):
         self._inputs = model_tensors.inputs
-        self._targets = model_tensors.targets
+        self._labels = model_tensors.labels
         self._is_training = model_tensors.is_training
         self._logits = model_tensors.logits
         self._checkpoint_dir = checkpoint_dir
@@ -52,7 +52,7 @@ class TFModel:
             elif training_type == 1:
                 listener_class = BinaryClsTestListerner
             listener = listener_class(test_logdir, gnte, steps_per_epoch,
-                                      self._inputs, self._targets, self._is_training, self._logits)
+                                      self._inputs, self._labels, self._is_training, self._logits)
             listeners.append(listener)
 
         saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)
@@ -74,7 +74,7 @@ class TFModel:
                 for _ in range(steps_per_epoch):
                     xb, yb = sess.run(data_gntr)
                     bar.next()
-                    fd = {self._inputs: xb, self._targets: yb, self._is_training: True}
+                    fd = {self._inputs: xb, self._labels: yb, self._is_training: True}
                     if global_step_value == 0:
                         summ = sess.run(summ_op, feed_dict=fd)
                         summ_writer.add_summary(summ, global_step=global_step_value)
@@ -152,7 +152,7 @@ class TFModel:
         for _ in range(steps_per_epoch):
             bar.next()
             xb, yb = sess.run(data_gn)
-            fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
+            fd = {self._inputs: xb, self._labels: yb, self._is_training: False}
             logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
             logits_lst.append(logits_val)
         bar.finish()
@@ -175,7 +175,7 @@ class TFModel:
         for _ in range(steps_per_epoch):
             bar.next()
             xb, yb = sess.run(data_gn)
-            fd = {self._inputs: xb, self._targets: yb, self._is_training: False}
+            fd = {self._inputs: xb, self._labels: yb, self._is_training: False}
             logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
             logits_lst.append(logits_val)
         bar.finish()
