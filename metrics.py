@@ -1,5 +1,6 @@
 import tensorflow as tf
 from functools import wraps
+import numpy as np
 
 
 def add_reset_op(sc=None):
@@ -21,25 +22,56 @@ def add_reset_op(sc=None):
 
 
 @add_reset_op('metrics')
-def metrics_accuracy(labels, predictions, weights=None,
-                     metrics_collections=None, updates_collections=None,
-                     name=None):
+def _metrics_accuracy(labels, predictions, weights=None,
+                      metrics_collections=None, updates_collections=None,
+                      name=None):
     return tf.metrics.accuracy(labels, predictions, weights,
                                metrics_collections, updates_collections,
                                name)
 
 
+def metrics_accuracy(labels, logits, weights=None,
+                     metrics_collections=None, updates_collections=None,
+                     name=None):
+    predictions = tf.argmax(logits, axis=-1)
+    return _metrics_accuracy(labels, predictions, weights,
+                             metrics_collections, updates_collections,
+                             name)
+
+
 @add_reset_op('metrics')
-def metrics_mean_per_class_accuracy(labels, predictions, num_classes, weights=None,
-                                    metrics_collections=None, updates_collections=None, name=None):
+def _metrics_mean_per_class_accuracy(labels, predictions, num_classes, weights=None,
+                                     metrics_collections=None, updates_collections=None, name=None):
     return tf.metrics.mean_per_class_accuracy(labels, predictions, num_classes, weights,
                                               metrics_collections, updates_collections, name)
 
 
+def metrics_mean_per_class_accuracy(labels, logits, num_classes, weights=None,
+                                    metrics_collections=None, updates_collections=None, name=None):
+    predictions = tf.argmax(logits, axis=-1)
+    return _metrics_mean_per_class_accuracy(labels, predictions, num_classes, weights,
+                                            metrics_collections, updates_collections, name)
+
+
 @add_reset_op('metrics')
-def metrics_auc(labels, predictions, weights=None, num_thresholds=200,
-                metrics_collections=None, updates_collections=None,
-                curve='ROC', name=None, summation_method='trapezoidal'):
+def _metrics_auc(labels, predictions, weights=None, num_thresholds=200,
+                 metrics_collections=None, updates_collections=None,
+                 curve='ROC', name=None, summation_method='trapezoidal'):
     return tf.metrics.auc(labels, predictions, weights, num_thresholds,
                           metrics_collections, updates_collections,
                           curve, name, summation_method)
+
+
+def metrics_auc(labels, logits, weights=None, num_thresholds=200,
+                metrics_collections=None, updates_collections=None,
+                curve='ROC', name=None, summation_method='trapezoidal'):
+    predictions = tf.nn.softmax(logits)[:, -1]
+    return _metrics_auc(labels, predictions, weights, num_thresholds,
+                        metrics_collections, updates_collections,
+                        curve, name, summation_method)
+
+
+def metrics_apc_np(confusion_matrix):
+    corrects = np.diag(confusion_matrix)
+    total_num_per_class = np.sum(confusion_matrix, axis=1)
+    return np.concatenate([corrects[None].T, total_num_per_class[None].T], axis=1)

@@ -21,7 +21,7 @@ class MultiClsTestListerner(tf.train.CheckpointSaverListener):
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
-        _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._labels, tf.argmax(self._logits, axis=1))
+        _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._labels, self._logits)
         self.reset_op.append(acc_reset_op)
         self.update_op.append(acc_update_op)
         summ_acc_te = tf.summary.scalar('test/accuracy', self.acc_pl)
@@ -70,10 +70,9 @@ class BinaryClsTestListerner(tf.train.CheckpointSaverListener):
 
     def begin(self):
         self.fw = tf.summary.FileWriter(self._logdir)
-        probabilities = tf.nn.softmax(self._logits)
-        _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._labels, tf.argmax(probabilities, axis=1))
-        _, roc_update_op, roc_reset_op, _ = metrics_auc(self._labels, probabilities[:, 1], curve='ROC')
-        _, pr_update_op, pr_reset_op, _ = metrics_auc(self._labels, probabilities[:, 1], curve='PR')
+        _, acc_update_op, acc_reset_op, _ = metrics_accuracy(self._labels, self._logits)
+        _, roc_update_op, roc_reset_op, _ = metrics_auc(self._labels, self._logits, curve='ROC')
+        _, pr_update_op, pr_reset_op, _ = metrics_auc(self._labels, self._logits, curve='PR')
         self.reset_op.extend([acc_reset_op, roc_reset_op, pr_reset_op])
         self.update_op.extend([acc_update_op, roc_update_op, pr_update_op])
         summ_acc_te = tf.summary.scalar('test/accuracy', self.acc_pl)
