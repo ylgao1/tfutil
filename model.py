@@ -4,6 +4,7 @@ from .listeners import MultiClsTestListerner, BinaryClsTestListerner
 from .misc import delete_and_make_dir
 from .tfio import read_tfrec_array
 from .tftrain import load_ckpt, load_ckpt_path, create_init_op
+from .visualization import saliency_grad
 from progress.bar import Bar
 import numpy as np
 from tensorflow.python.training.summary_io import SummaryWriterCache
@@ -181,3 +182,45 @@ class TFModel:
         bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
         return logits, metrics
+
+    def saliency_map_single(self, saliency_class, seed_x=None, niter=100, step=0.1):
+        if seed_x is None:
+            seed_x = np.zeros(shape=[1, *self._inputs.get_shape().as_list()[1:]], dtype=np.float32)
+        sa_grads = saliency_grad(self._inputs, self._logits, saliency_class)
+        x = np.copy(seed_x)
+        probs = tf.nn.softmax(self._logits)
+        sess = self._sess
+        for i in range(niter):
+            grads_val = sess.run(sa_grads, feed_dict={self._inputs: x, self._is_training: False})
+            x += step * grads_val
+            logits_value, probs_value = sess.run([self._logits, probs],
+                                                 feed_dict={self._inputs: x, self._is_training: False})
+            print(f'Iter: {i+1}')
+            print(logits_value)
+            print(probs_value)
+        return x[0]
+
+    def saliency_map_all(self, seed_x=None, niter=100, step=0.1):
+        num_classes = self._logits.get_shape().as_list()[-1]
+        if seed_x is None:
+            seed_x = np.zeros(shape=[num_classes, *self._inputs.get_shape().as_list()[1:]], dtype=np.float32)
+        probs = tf.nn.softmax(self._logits)
+        sess = self._sess
+        for c in range(num_classes):
+            sa_grads = saliency_grad(self._inputs, self._logits, c)
+            x = np.copy(seed_x[c])[None]
+            for i in range(niter):
+                grads_val = sess.run(sa_grads, feed_dict={self._inputs: x, self._is_training: False})
+                x += step * grads_val
+                logits_value, probs_value = sess.run([self._logits, probs],
+                                                     feed_dict={self._inputs: x, self._is_training: False})
+                print(f'Iter: {i+1}')
+                print(logits_value)
+                print(probs_value)
+            seed_x[c] = x[0]
+        logits_value, probs_value = sess.run([self._logits, probs],
+                                             feed_dict={self._inputs: seed_x, self._is_training: False})
+        print('Final result:')
+        print(logits_value)
+        print(probs_value)
+        return seed_x

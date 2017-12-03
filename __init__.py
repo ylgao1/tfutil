@@ -4,3 +4,4 @@ from .metrics import *
 from .listeners import *
 from .misc import *
 from .model import *
+from .visualization import *
