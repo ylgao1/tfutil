@@ -3,7 +3,9 @@ from scipy.stats import rankdata
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 
 
-def weighted_pearson(x, y, w):
+def weighted_pearson(x, y, w=None):
+    if w is None:
+        w = np.ones_like(x)
     y_demean = y - np.average(y, weights=w)
     x_demean = x - np.average(x, weights=w)
     corr = ((np.sum(w * y_demean * x_demean) / np.sum(w)) /
@@ -11,7 +13,9 @@ def weighted_pearson(x, y, w):
     return corr
 
 
-def weighted_spearman(x, y, w, method='average'):
+def weighted_spearman(x, y, w=None, method='average'):
+    if w is None:
+        w = np.ones_like(x)
     yr = rankdata(y, method)
     xr = rankdata(x, method)
     return weighted_pearson(xr, yr, w)
