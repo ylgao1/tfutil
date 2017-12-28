@@ -75,3 +75,25 @@ def metrics_apc_np(confusion_matrix):
     corrects = np.diag(confusion_matrix)
     total_num_per_class = np.sum(confusion_matrix, axis=1)
     return np.concatenate([corrects[None].T, total_num_per_class[None].T], axis=1)
+
+
+def rankdata(a, method='average', scope='rankdata'):
+    with tf.name_scope(scope):
+        arr = tf.reshape(a, shape=[-1])
+        _, sorter = tf.nn.top_k(-arr, arr.get_shape()[-1])
+        inv = tf.invert_permutation(sorter)
+        if method == 'ordinal':
+            return inv + 1
+        arr = tf.gather(arr, sorter)
+        obs = tf.cast(tf.not_equal(arr[1:], arr[:-1]), dtype=tf.int32)
+        obs = tf.concat([[1], obs], axis=0)
+        dense = tf.gather(tf.cumsum(obs), inv)
+        if method == 'dense':
+            return dense
+        count = tf.reshape(tf.where(tf.not_equal(obs, tf.zeros_like(obs))), [-1])
+        count = tf.concat([count, obs.get_shape()], axis=0)
+        if method == 'max':
+            return tf.gather(count, dense)
+        if method == 'min':
+            return tf.gather(count, dense - 1) + 1
+        return (tf.gather(count, dense) + tf.gather(count, dense - 1) + 1) / 2
