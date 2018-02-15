@@ -1,8 +1,99 @@
 import tensorflow as tf
 from functools import wraps
 import numpy as np
-from tensorflow.python.ops.metrics_impl import _create_local, _remove_squeezable_dimensions
+from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import confusion_matrix
+
+
+def metric_variable(shape, dtype=tf.float64, validate_shape=True, name=None):
+    """Create variable in `GraphKeys.(LOCAL|METRIC_VARIABLES`) collections."""
+
+    return variable_scope.variable(
+        lambda: tf.zeros(shape, dtype),
+        trainable=False,
+        collections=[
+            tf.GraphKeys.LOCAL_VARIABLES, tf.GraphKeys.METRIC_VARIABLES
+        ],
+        validate_shape=validate_shape,
+        name=name)
+
+
+def _remove_squeezable_dimensions(predictions, labels, weights):
+    """Squeeze or expand last dim if needed.
+
+    Squeezes last dim of `predictions` or `labels` if their rank differs by 1
+    (using confusion_matrix.remove_squeezable_dimensions).
+    Squeezes or expands last dim of `weights` if its rank differs by 1 from the
+    new rank of `predictions`.
+
+    If `weights` is scalar, it is kept scalar.
+
+    This will use static shape if available. Otherwise, it will add graph
+    operations, which could result in a performance hit.
+
+    Args:
+      predictions: Predicted values, a `Tensor` of arbitrary dimensions.
+      labels: Optional label `Tensor` whose dimensions match `predictions`.
+      weights: Optional weight scalar or `Tensor` whose dimensions match
+        `predictions`.
+
+    Returns:
+      Tuple of `predictions`, `labels` and `weights`. Each of them possibly has
+      the last dimension squeezed, `weights` could be extended by one dimension.
+    """
+    predictions = tf.convert_to_tensor(predictions)
+    if labels is not None:
+        labels, predictions = confusion_matrix.remove_squeezable_dimensions(
+            labels, predictions)
+        predictions.get_shape().assert_is_compatible_with(labels.get_shape())
+
+    if weights is None:
+        return predictions, labels, None
+
+    weights = tf.convert_to_tensor(weights)
+    weights_shape = weights.get_shape()
+    weights_rank = weights_shape.ndims
+    if weights_rank == 0:
+        return predictions, labels, weights
+
+    predictions_shape = predictions.get_shape()
+    predictions_rank = predictions_shape.ndims
+    if (predictions_rank is not None) and (weights_rank is not None):
+        # Use static rank.
+        if weights_rank - predictions_rank == 1:
+            weights = tf.squeeze(weights, [-1])
+        elif predictions_rank - weights_rank == 1:
+            weights = tf.expand_dims(weights, [-1])
+    else:
+        # Use dynamic rank.
+        weights_rank_tensor = tf.rank(weights)
+        rank_diff = weights_rank_tensor - tf.rank(predictions)
+
+        def _maybe_expand_weights():
+            return tf.cond(
+                tf.equal(rank_diff, -1),
+                lambda: tf.expand_dims(weights, [-1]),
+                lambda: weights)
+
+        # Don't attempt squeeze if it will fail based on static check.
+        if ((weights_rank is not None) and
+                (not weights_shape.dims[-1].is_compatible_with(1))):
+            maybe_squeeze_weights = lambda: weights
+        else:
+            maybe_squeeze_weights = lambda: tf.squeeze(weights, [-1])
+
+        def _maybe_adjust_weights():
+            return tf.cond(
+                tf.equal(rank_diff, 1),
+                maybe_squeeze_weights,
+                _maybe_expand_weights)
+
+        # If weights are scalar, do nothing. Otherwise, try to add or remove a
+        # dimension to match predictions.
+        weights = tf.cond(
+            tf.equal(weights_rank_tensor, 0),
+            lambda: weights, _maybe_adjust_weights)
+    return predictions, labels, weights
 
 
 def add_reset_op(sc=None):
@@ -14,11 +105,7 @@ def add_reset_op(sc=None):
                 vars = tf.contrib.framework.get_variables(
                     scope.original_name_scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
                 reset_op = tf.variables_initializer(vars)
-                with tf.control_dependencies([reset_op]):
-                    op1 = tf.identity(update_op)
-                with tf.control_dependencies([op1]):
-                    op2 = tf.identity(metric_op)
-            return metric_op, update_op, reset_op, op1, op2
+            return metric_op, update_op, reset_op
 
         return wrapper
 
@@ -85,10 +172,8 @@ def _streaming_confusion_matrix(labels, predictions, num_classes, weights=None,
     """
     # Local variable to accumulate the predictions in the confusion matrix.
     with tf.variable_scope(name, 'confusion_matrix'):
-        total_cm = _create_local(
-            'total_confusion_matrix',
-            shape=[num_classes, num_classes],
-            dtype=tf.float64)
+        total_cm = metric_variable(
+            [num_classes, num_classes], tf.float64, name='total_confusion_matrix')
 
         # Cast the type to int64 required by confusion_matrix_ops.
         predictions = tf.to_int64(predictions)
@@ -199,9 +284,9 @@ def streaming_spearman_correlation(labels, predictions, weights=None,
     with tf.variable_scope(name, 'spearman_r'):
         predictions, labels, weights = _remove_squeezable_dimensions(
             predictions, labels, weights)
-        y1 = _create_local('y1', shape=[1], validate_shape=False)
-        y2 = _create_local('y2', shape=[1], validate_shape=False)
-        w = _create_local('weights', shape=[1], validate_shape=False)
+        y1 = metric_variable(name='y1', shape=[1], validate_shape=False)
+        y2 = metric_variable(name='y2', shape=[1], validate_shape=False)
+        w = metric_variable(name='weights', shape=[1], validate_shape=False)
         if weights is None:
             weights = tf.ones_like(labels, dtype=labels.dtype)
         update_y1 = tf.assign(y1, tf.concat([y1, labels], axis=-1), validate_shape=False)[1:]

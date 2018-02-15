@@ -33,13 +33,14 @@ class TFModel:
         self._model_loaded = True
 
     def train(self, train_op, gntr, num_epochs, gnte=None,
-              summ_op=None, training_type=0,
+               metric_opdef=None, summ_op=None, training_type=0,
               max_checkpoint_to_keep=10, summ_steps=100,
               graph=None, from_scratch=True):
         """
         training_type:  0 for multi-class classification
                         1 for binary-class classification
         """
+        metric_op, update_op, reset_op = list(zip(*metric_opdef))
         if from_scratch:
             delete_and_make_dir(self._checkpoint_dir)
         global_step = tf.get_collection(tf.GraphKeys.GLOBAL_STEP)[0]
@@ -77,13 +78,17 @@ class TFModel:
                     bar.next()
                     fd = {self._inputs: xb, self._labels: yb, self._is_training: True}
                     if global_step_value == 0:
+                        sess.run(update_op, feed_dict=fd)
                         summ = sess.run(summ_op, feed_dict=fd)
                         summ_writer.add_summary(summ, global_step=global_step_value)
+                        sess.run(reset_op)
                     sess.run(train_op, feed_dict=fd)
                     global_step_value = sess.run(global_step)
                     if global_step_value % summ_steps == 0:
+                        sess.run(update_op, feed_dict=fd)
                         summ = sess.run(summ_op, feed_dict=fd)
                         summ_writer.add_summary(summ, global_step=global_step_value)
+                        sess.run(reset_op)
 
                 epoch = global_step_value // steps_per_epoch
                 if listeners:
