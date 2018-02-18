@@ -146,7 +146,7 @@ class TFModel:
         data_gn, data_gn_init_op, steps_per_epoch = gnte
         if not isinstance(metrics_ops[0], tuple):
             metrics_ops = [metrics_ops]
-        _, update_ops, reset_ops, _ = list(zip(*metrics_ops))
+        _, update_ops, reset_ops = list(zip(*metrics_ops))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
