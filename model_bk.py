@@ -1,5 +1,6 @@
 import tensorflow as tf
 import collections
+from .listeners import MultiClsTestListerner, BinaryClsTestListerner
 from .misc import delete_and_make_dir
 from .tfio import read_tfrec_array
 from .tftrain import load_ckpt, load_ckpt_path, create_init_op
@@ -30,20 +31,30 @@ class TFModel:
             load_ckpt_path(sess, ckpt_path)
         self._model_loaded = True
 
-    def train(self, train_op, gntr, num_epochs,
-              metric_opdefs, extra_summ_ops=None, listeners=None,
+    def train(self, train_op, gntr, num_epochs, gnte=None,
+              metric_opdef=None, summ_op=None, training_type=0,
               max_checkpoint_to_keep=10, summ_steps=100,
               graph=None, from_scratch=True):
-
-        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
-        metric_summ_names = ['train/{0}'.format(m.name.split('/')[-2]) for m in metric_ops]
-        metric_summ_ops = [tf.summary.scalar(*tup) for tup in list(zip(metric_summ_names, metric_ops))]
-        summ_ops = metric_summ_ops + extra_summ_ops if extra_summ_ops else metric_summ_ops
-        summ_op = tf.summary.merge(summ_ops)
+        """
+        training_type:  0 for multi-class classification
+                        1 for binary-class classification
+        """
+        metric_op, update_op, reset_op = list(zip(*metric_opdef))
         if from_scratch:
             delete_and_make_dir(self._checkpoint_dir)
         global_step = tf.get_collection(tf.GraphKeys.GLOBAL_STEP)[0]
         data_gntr, steps_per_epoch = gntr
+        listeners = []
+        if gnte is not None:
+            test_logdir = f'{self._checkpoint_dir}/test'
+            listener_class = None
+            if training_type == 0:
+                listener_class = MultiClsTestListerner
+            elif training_type == 1:
+                listener_class = BinaryClsTestListerner
+            listener = listener_class(test_logdir, gnte, steps_per_epoch,
+                                      self._inputs, self._labels, self._is_training, self._logits)
+            listeners.append(listener)
 
         saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)
         summ_writer = tf.summary.FileWriter(f'{self._checkpoint_dir}/train')
@@ -51,8 +62,7 @@ class TFModel:
             summ_writer.add_graph(graph)
         if listeners:
             for l in listeners:
-                l.begin(self._checkpoint_dir, self._inputs, self._labels, self._is_training, self._logits,
-                        steps_per_epoch)
+                l.begin()
 
         with tf.Session() as sess:
             sess.run(create_init_op())
@@ -67,29 +77,33 @@ class TFModel:
                     bar.next()
                     fd = {self._inputs: xb, self._labels: yb, self._is_training: True}
                     if global_step_value == 0:
-                        sess.run(update_ops, feed_dict=fd)
+                        sess.run(update_op, feed_dict=fd)
                         summ = sess.run(summ_op, feed_dict=fd)
                         summ_writer.add_summary(summ, global_step=global_step_value)
-                        sess.run(reset_ops)
+                        sess.run(reset_op)
                     sess.run(train_op, feed_dict=fd)
                     global_step_value = sess.run(global_step)
                     if global_step_value % summ_steps == 0:
-                        sess.run(update_ops, feed_dict=fd)
+                        sess.run(update_op, feed_dict=fd)
                         summ = sess.run(summ_op, feed_dict=fd)
                         summ_writer.add_summary(summ, global_step=global_step_value)
-                        sess.run(reset_ops)
+                        sess.run(reset_op)
 
                 epoch = global_step_value // steps_per_epoch
-                summ_writer.flush()
-                bar.finish()
+                if listeners:
+                    for l in listeners:
+                        l.before_save(sess, global_step_value)
+
                 saver.save(sess, f'{self._checkpoint_dir}/model.ckpt', global_step_value, write_meta_graph=False)
                 if listeners:
                     for l in listeners:
-                        l.run(sess, global_step_value)
+                        l.after_save(sess, global_step_value)
 
+                summ_writer.flush()
+                bar.finish()
             if listeners:
                 for l in listeners:
-                    l.end()
+                    l.end(sess, global_step_value)
 
     def predict(self, gnte_pred):
         data_gn, data_gn_init_op, steps_per_epoch = gnte_pred
@@ -131,7 +145,7 @@ class TFModel:
         data_gn, data_gn_init_op, steps_per_epoch = gnte
         if not isinstance(metrics_ops[0], tuple):
             metrics_ops = [metrics_ops]
-        metric_ops, update_ops, reset_ops = list(zip(*metrics_ops))
+        _, update_ops, reset_ops = list(zip(*metrics_ops))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
