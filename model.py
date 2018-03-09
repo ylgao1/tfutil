@@ -127,50 +127,46 @@ class TFModel:
         logits = np.concatenate(logits_lst, axis=0)
         return logits
 
-    def eval(self, metrics_ops, gnte):
+    def eval(self, metric_opdefs, gnte):
         data_gn, data_gn_init_op, steps_per_epoch = gnte
-        if not isinstance(metrics_ops[0], tuple):
-            metrics_ops = [metrics_ops]
-        metric_ops, update_ops, reset_ops = list(zip(*metrics_ops))
+        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
         sess = self._sess
         sess.run(data_gn_init_op)
         sess.run(reset_ops)
-        metrics = None
         bar = Bar('Test evaluation', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
         for _ in range(steps_per_epoch):
             bar.next()
             xb, yb = sess.run(data_gn)
             fd = {self._inputs: xb, self._labels: yb, self._is_training: False}
-            logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
+            logits_val, _ = sess.run([self._logits, update_ops], feed_dict=fd)
             logits_lst.append(logits_val)
         bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
+        metrics = sess.run(metric_ops)
         return logits, metrics
 
-    def eval_from_array(self, metrics_ops, x, y, batch_size=None):
+    def eval_from_array(self, metric_opdefs, x, y, batch_size=None):
         data_gn, data_gn_init_op, steps_per_epoch = read_tfrec_array((x, y), batch_size=batch_size, is_test=True)
-        if not isinstance(metrics_ops[0], tuple):
-            metrics_ops = [metrics_ops]
-        _, update_ops, reset_ops, _ = list(zip(*metrics_ops))
+        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
         sess = self._sess
         sess.run(data_gn_init_op)
         sess.run(reset_ops)
-        metrics = None
         bar = Bar('Test evaluation', max=steps_per_epoch, suffix='%(index)d/%(max)d ETA: %(eta)d s')
         for _ in range(steps_per_epoch):
             bar.next()
             xb, yb = sess.run(data_gn)
             fd = {self._inputs: xb, self._labels: yb, self._is_training: False}
-            logits_val, metrics = sess.run([self._logits, update_ops], feed_dict=fd)
+            logits_val, _ = sess.run([self._logits, update_ops], feed_dict=fd)
             logits_lst.append(logits_val)
         bar.finish()
         logits = np.concatenate(logits_lst, axis=0)
+        metrics = sess.run(metric_ops)
         return logits, metrics
 
     def saliency_map_single(self, saliency_class, seed_x=None, niter=100, step=0.1):
