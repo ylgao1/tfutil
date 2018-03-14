@@ -2,6 +2,13 @@ import tensorflow as tf
 import numpy as np
 import os
 
+__all__ = ['tfrec_name', 'tfrec_pred_name', 'tfimgrec_name', 'tfimgrec_pred_name',
+           'rec_names', 'parse_tfrec_name', 'read_tfrec', 'read_tfrec_img', 'read_raw_tfimgrec',
+           'read_tfimgrec', 'read_tfrec_array', 'balanced_read_tfrec_array',
+           'write_tfrec_from_array', 'write_tfrec_pred_from_array', 'write_tfimgrec_from_lst',
+           'write_tfimgrec_pred_from_lst', 'write_tfrec_from_generator', 'write_tfrec_pred_from_generator',
+           'write_tfimgrec_pred_from_generator', 'convert_tfimgrec_to_tfrec']
+
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))

@@ -4,6 +4,9 @@ import numpy as np
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import confusion_matrix
 
+__all__ = ['metric_variable', 'metrics_accuracy', 'metrics_mean_per_class_accuracy',
+           'metrics_apc_np', 'metrics_auc', 'metrics_confusion_matrix', 'metrics_spearman_correlation']
+
 
 def metric_variable(shape, dtype=tf.float64, validate_shape=True, name=None):
     """Create variable in `GraphKeys.(LOCAL|METRIC_VARIABLES`) collections."""

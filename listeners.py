@@ -1,7 +1,7 @@
 import tensorflow as tf
-from .metrics import *
 from progress.bar import Bar
 
+__all__ = ['Listener']
 
 class Listener:
     def __init__(self, name, data_gn, metric_opdefs):

@@ -3,6 +3,10 @@ from tensorflow.contrib import slim
 from tempfile import NamedTemporaryFile
 from tensorflow.python.tools import freeze_graph
 
+__all__ = ['loss', 'loss_with_aux', 'masked_sigmoid_cross_entropy', 'seq_sigmoid_cross_entropy',
+           'seq_softmax_cross_entropy', 'create_init_op', 'create_train_op', 'get_all_ckpt',
+           'load_ckpt', 'load_ckpt_path', 'save_model_pb', 'load_model_pb']
+
 
 def loss(labels, logits, is_one_hot=False, scope=None):
     with tf.name_scope(scope):

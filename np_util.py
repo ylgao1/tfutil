@@ -2,6 +2,9 @@ import numpy as np
 from scipy.stats import rankdata
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 
+__all__ = ['weighted_spearman', 'weighted_pearson', 'one_hot', 'split_test_data',
+           'split_test_data_r', 'split_val_and_test_data', 'split_val_and_test_data_r',
+           'generate_data', 'generate_data_for_testing']
 
 def weighted_pearson(x, y, w=None):
     if w is None:
@@ -27,7 +30,7 @@ def one_hot(indices, depth):
     return m
 
 
-def split_testing_data(y, test_ratio):
+def split_test_data(y, test_ratio):
     sss = StratifiedShuffleSplit(n_splits=1, test_size=test_ratio)
     tri = None
     tei = None
@@ -37,7 +40,7 @@ def split_testing_data(y, test_ratio):
     return tri, tei
 
 
-def split_val_and_testing_data(y, val_ratio, test_ratio):
+def split_val_and_test_data(y, val_ratio, test_ratio):
     '''
     Data will be splitted into 3 pieces: train, val and test
     val_ratio: #val / (#train + #val)
@@ -69,7 +72,7 @@ def split_test_data_r(n, test_ratio):
     return tri, tei
 
 
-def split_val_and_testing_data_r(n, val_ratio, test_ratio):
+def split_val_and_test_data_r(n, val_ratio, test_ratio):
     ss_test = ShuffleSplit(n_splits=1, test_size=test_ratio)
     ss_val = ShuffleSplit(n_splits=1, test_size=val_ratio)
     tri_raw = None

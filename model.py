@@ -7,6 +7,8 @@ from .visualization import saliency_grad
 from progress.bar import Bar
 import numpy as np
 
+__all__ = ['ModelTensors', 'TFModel']
+
 ModelTensors = collections.namedtuple('ModelTensors',
                                       ('inputs', 'labels',
                                        'is_training', 'logits'))

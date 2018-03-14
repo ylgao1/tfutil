@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+__all__ = ['saliency_grad']
+
 
 def saliency_grad(inputs, logits, saliency_class):
     logits_cls = logits[:, saliency_class]
