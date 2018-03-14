@@ -5,3 +5,4 @@ from .listeners import *
 from .misc import *
 from .model import *
 from .visualization import *
+from .np_util import *
