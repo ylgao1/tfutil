@@ -44,7 +44,7 @@ class TFModel:
         summ_op = tf.summary.merge(summ_ops)
         if from_scratch:
             delete_and_make_dir(self._checkpoint_dir)
-        global_step = tf.get_collection(tf.GraphKeys.GLOBAL_STEP)[0]
+        global_step = tf.train.get_or_create_global_step()
         data_gntr, steps_per_epoch = gntr
 
         saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)

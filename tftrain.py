@@ -4,7 +4,7 @@ from tempfile import NamedTemporaryFile
 from tensorflow.python.tools import freeze_graph
 
 __all__ = ['loss', 'loss_with_aux', 'masked_sigmoid_cross_entropy', 'seq_sigmoid_cross_entropy',
-           'seq_softmax_cross_entropy', 'create_init_op', 'create_train_op', 'get_all_ckpt',
+           'seq_softmax_cross_entropy', 'create_init_op', 'dynamic_learning_rate', 'create_train_op', 'get_all_ckpt',
            'load_ckpt', 'load_ckpt_path', 'save_model_pb', 'load_model_pb']
 
 
@@ -72,6 +72,16 @@ def seq_softmax_cross_entropy(labels, logits, scope=None):
 def create_init_op():
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     return init_op
+
+
+def dynamic_learning_rate(learning_rate_init, decay_steps, decay_rate=0.1, staircase=True, name=None):
+    '''
+        decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
+    '''
+    global_step = tf.train.get_or_create_global_step()
+    learning_rate = tf.train.exponential_decay(learning_rate_init, global_step, decay_steps, decay_rate, staircase,
+                                               name)
+    return learning_rate
 
 
 def create_train_op(total_loss, optimizer, max_grad_norm=None):
