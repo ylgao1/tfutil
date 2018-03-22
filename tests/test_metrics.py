@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 import os
 
-from ..tftrain import create_init_op
-from ..metrics import metrics_accuracy, metrics_mean_squared_error
+from tfutil.tftrain import create_init_op
+from tfutil.metrics import metrics_accuracy, metrics_mean_squared_error
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -25,7 +25,8 @@ def acc_cgraph_preparation():
     a_ph = tf.placeholder(shape=[None], dtype=tf.int32)
     b_ph = tf.placeholder(shape=[None, N], dtype=tf.float32)
     metric_op, update_op, reset_op = metrics_accuracy(labels=a_ph, logits=b_ph)
-    return (a_ph, b_ph), (metric_op, update_op, reset_op)
+    yield (a_ph, b_ph), (metric_op, update_op, reset_op)
+    tf.reset_default_graph()
 
 
 class TestAccuracy:
@@ -80,7 +81,8 @@ def mse_cgraph_preparation():
     a_ph = tf.placeholder(shape=[None], dtype=tf.float32)
     b_ph = tf.placeholder(shape=[None], dtype=tf.float32)
     metric_op, update_op, reset_op = metrics_mean_squared_error(labels=a_ph, predictions=b_ph)
-    return (a_ph, b_ph), (metric_op, update_op, reset_op)
+    yield (a_ph, b_ph), (metric_op, update_op, reset_op)
+    tf.reset_default_graph()
 
 
 class TestMSE:
