@@ -5,7 +5,8 @@ from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import confusion_matrix
 
 __all__ = ['metric_variable', 'metrics_accuracy', 'metrics_mean_per_class_accuracy',
-           'metrics_apc_np', 'metrics_auc', 'metrics_confusion_matrix', 'metrics_spearman_correlation']
+           'metrics_apc_np', 'metrics_auc', 'metrics_confusion_matrix', 'metrics_spearman_correlation',
+           'metrics_mean_squared_error']
 
 
 def metric_variable(shape, dtype=tf.float64, validate_shape=True, name=None):
@@ -318,3 +319,9 @@ def metrics_spearman_correlation(labels, predictions, weights=None,
                                           metrics_collections,
                                           updates_collections,
                                           name)
+
+
+@add_reset_op('metrics')
+def metrics_mean_squared_error(labels, predictions, weights=None, metrics_collections=None, updates_collections=None,
+                               name=None):
+    return tf.metrics.mean_squared_error(labels, predictions, weights, metrics_collections, updates_collections, name)
