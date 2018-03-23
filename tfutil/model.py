@@ -192,7 +192,7 @@ class TFModel:
 
     def eval(self, metric_opdefs, gnte):
         data_gn, data_gn_init_op, steps_per_epoch = gnte
-        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
+        metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
@@ -213,7 +213,7 @@ class TFModel:
 
     def eval_from_array(self, metric_opdefs, x, y, batch_size=None):
         data_gn, data_gn_init_op, steps_per_epoch = read_tfrec_array((x, y), batch_size=batch_size, is_test=True)
-        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
+        metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
         logits_lst = []
         if not self._model_loaded:
             raise RuntimeError('Load model first!')
