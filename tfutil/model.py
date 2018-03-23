@@ -37,7 +37,7 @@ class TFModel:
               max_checkpoint_to_keep=10, summ_steps=100,
               graph=None, from_scratch=True):
 
-        metric_ops, update_ops, reset_ops, _ = list(zip(*metric_opdefs))
+        metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
         metric_summ_names = ['train/{0}'.format(m.name.split('/')[-2]) for m in metric_ops]
         metric_summ_ops = [tf.summary.scalar(*tup) for tup in list(zip(metric_summ_names, metric_ops))]
         summ_ops = metric_summ_ops + list(extra_summ_ops) if extra_summ_ops else metric_summ_ops
@@ -88,6 +88,67 @@ class TFModel:
                 if listeners:
                     for l in listeners:
                         l.run(sess, global_step_value)
+
+            if listeners:
+                for l in listeners:
+                    l.end()
+
+    def train_stepwise(self, train_op, gntr, num_steps, steps_per_checkpoint,
+                       metric_opdefs, extra_summ_ops=None, listeners=None,
+                       max_checkpoint_to_keep=10, summ_steps=100,
+                       graph=None, from_scratch=True):
+        metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
+        metric_summ_names = ['train/{0}'.format(m.name.split('/')[-2]) for m in metric_ops]
+        metric_summ_ops = [tf.summary.scalar(*tup) for tup in list(zip(metric_summ_names, metric_ops))]
+        summ_ops = metric_summ_ops + list(extra_summ_ops) if extra_summ_ops else metric_summ_ops
+        summ_op = tf.summary.merge(summ_ops)
+        if from_scratch:
+            delete_and_make_dir(self._checkpoint_dir)
+        global_step = tf.train.get_or_create_global_step()
+        data_gntr, _ = gntr
+        num_checkpoints = num_steps // steps_per_checkpoint
+
+        saver = tf.train.Saver(max_to_keep=max_checkpoint_to_keep)
+        summ_writer = tf.summary.FileWriter(f'{self._checkpoint_dir}/train')
+        if graph is not None:
+            summ_writer.add_graph(graph)
+        if listeners:
+            for l in listeners:
+                l.begin(self._checkpoint_dir, self._inputs, self._labels, self._is_training, self._logits,
+                        steps_per_checkpoint)
+        with tf.Session() as sess:
+            sess.run(create_init_op())
+            if not from_scratch:
+                load_ckpt(sess, model_dir=self._checkpoint_dir)
+            global_step_value = sess.run(global_step)
+            id_checkpoints = global_step_value // steps_per_checkpoint
+            for _ in range(num_checkpoints):
+                bar = Bar(f'Checkpoint {id_checkpoints+1}', max=steps_per_checkpoint,
+                          suffix='%(index)d/%(max)d ETA: %(eta)d s')
+                for _ in range(steps_per_checkpoint):
+                    xb, yb = sess.run(data_gntr)
+                    bar.next()
+                    fd = {self._inputs: xb, self._labels: yb, self._is_training: True}
+                    if global_step_value == 0:
+                        sess.run(update_ops, feed_dict=fd)
+                        summ = sess.run(summ_op, feed_dict=fd)
+                        summ_writer.add_summary(summ, global_step=global_step_value)
+                        sess.run(reset_ops)
+                    sess.run(train_op, feed_dict=fd)
+                    global_step_value = sess.run(global_step)
+                    if global_step_value % summ_steps == 0:
+                        sess.run(update_ops, feed_dict=fd)
+                        summ = sess.run(summ_op, feed_dict=fd)
+                        summ_writer.add_summary(summ, global_step=global_step_value)
+                        sess.run(reset_ops)
+
+                id_checkpoints = global_step_value // steps_per_checkpoint
+                summ_writer.flush()
+                bar.finish()
+                saver.save(sess, f'{self._checkpoint_dir}/model.ckpt', global_step_value, write_meta_graph=False)
+                if listeners:
+                    for l in listeners:
+                        l.run_stepwise(sess, global_step_value)
 
             if listeners:
                 for l in listeners:

@@ -7,7 +7,7 @@ __all__ = ['tfrec_name', 'tfrec_pred_name', 'tfimgrec_name', 'tfimgrec_pred_name
            'read_tfimgrec', 'read_tfrec_array', 'balanced_read_tfrec_array',
            'write_tfrec_from_array', 'write_tfrec_pred_from_array', 'write_tfimgrec_from_lst',
            'write_tfimgrec_pred_from_lst', 'write_tfrec_from_generator', 'write_tfrec_pred_from_generator',
-           'write_tfimgrec_pred_from_generator', 'convert_tfimgrec_to_tfrec']
+           'write_tfimgrec_pred_from_generator', 'convert_tfimgrec_to_tfrec', 'read_tfrec_infinite_generator']
 
 
 def _int64_feature(value):
@@ -1043,3 +1043,10 @@ def convert_tfimgrec_to_tfrec(sess, filenames, shape, shape_enlarge=True, normal
         os.rename(temp_filenames[0], out_filename)
         out_filenames.append(out_filename)
     return out_filenames
+
+
+def read_tfrec_infinite_generator(gen_func, batch_size=None):
+    ds = tf.data.Dataset.from_generator(gen_func, output_types=(tf.float32, tf.float32))
+    ds = ds.batch(batch_size)
+    iterator = ds.make_one_shot_iterator()
+    return iterator.get_next(), -1

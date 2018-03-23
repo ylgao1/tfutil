@@ -24,7 +24,7 @@ def classification_data_preparation():
 def acc_cgraph_preparation():
     a_ph = tf.placeholder(shape=[None], dtype=tf.int32)
     b_ph = tf.placeholder(shape=[None, N], dtype=tf.float32)
-    metric_op, update_op, reset_op, _ = metrics_accuracy(labels=a_ph, logits=b_ph)
+    metric_op, update_op, reset_op, _, _ = metrics_accuracy(labels=a_ph, logits=b_ph)
     yield (a_ph, b_ph), (metric_op, update_op, reset_op)
     tf.reset_default_graph()
 
@@ -80,7 +80,7 @@ def regression_data_preparation():
 def mse_cgraph_preparation():
     a_ph = tf.placeholder(shape=[None], dtype=tf.float32)
     b_ph = tf.placeholder(shape=[None], dtype=tf.float32)
-    metric_op, update_op, reset_op, _ = metrics_mean_squared_error(labels=a_ph, predictions=b_ph)
+    metric_op, update_op, reset_op, _, _ = metrics_mean_squared_error(labels=a_ph, predictions=b_ph)
     print('\n{0}'.format(get_metric_name(metric_op)))
     yield (a_ph, b_ph), (metric_op, update_op, reset_op)
     tf.reset_default_graph()

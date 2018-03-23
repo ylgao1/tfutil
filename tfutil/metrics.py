@@ -6,7 +6,7 @@ from tensorflow.python.ops import confusion_matrix
 
 __all__ = ['metric_variable', 'get_metric_name', 'metrics_accuracy', 'metrics_mean_per_class_accuracy',
            'metrics_apc_np', 'metrics_auc', 'metrics_confusion_matrix', 'metrics_spearman_correlation',
-           'metrics_mean_squared_error']
+           'metrics_mean_squared_error', 'metrics_mean_absolute_error']
 
 
 def metric_variable(shape, dtype=tf.float32, validate_shape=True, name=None):
@@ -114,8 +114,9 @@ def add_reset_op(sc=None):
                     scope.original_name_scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
                 reset_op = tf.variables_initializer(vars)
             metric_name = get_metric_name(metric_op)
-            metric_summ_op = tf.summary.scalar(metric_name, metric_op)
-            return metric_op, update_op, reset_op, metric_summ_op
+            metric_summ_ph = tf.placeholder(dtype=tf.float32)
+            metric_summ_op = tf.summary.scalar(metric_name, metric_summ_ph)
+            return metric_op, update_op, reset_op, metric_summ_ph, metric_summ_op
 
         return wrapper
 
@@ -331,3 +332,9 @@ def metrics_spearman_correlation(labels, predictions, weights=None,
 def metrics_mean_squared_error(labels, predictions, weights=None, metrics_collections=None, updates_collections=None,
                                name=None):
     return tf.metrics.mean_squared_error(labels, predictions, weights, metrics_collections, updates_collections, name)
+
+
+@add_reset_op('metrics')
+def metrics_mean_absolute_error(labels, predictions, weights=None, metrics_collections=None, updates_collections=None,
+                                name=None):
+    return tf.metrics.mean_absolute_error(labels, predictions, weights, metrics_collections, updates_collections, name)
