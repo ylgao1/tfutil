@@ -1,5 +1,9 @@
 # tfutil Changelog
 
+## Version 0.2.1 - 23. March 2018
+
+* Changed summary system to group all test metric into one scalar graph.
+
 ## Version 0.2 - 22. March 2018
 
 * Added `metrics_mean_squared_error` method in metrics module.
