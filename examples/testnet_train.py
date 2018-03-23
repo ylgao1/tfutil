@@ -1,5 +1,5 @@
 import tensorflow as tf
-from testnet import TestNet
+from examples.testnet import TestNet
 import tfutil
 
 num_classes = 10

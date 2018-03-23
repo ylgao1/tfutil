@@ -37,10 +37,10 @@ class TFModel:
               max_checkpoint_to_keep=10, summ_steps=100,
               graph=None, from_scratch=True):
 
-        metric_ops, update_ops, reset_ops = list(zip(*metric_opdefs))
+        metric_ops, update_ops, reset_ops, _ = list(zip(*metric_opdefs))
         metric_summ_names = ['train/{0}'.format(m.name.split('/')[-2]) for m in metric_ops]
         metric_summ_ops = [tf.summary.scalar(*tup) for tup in list(zip(metric_summ_names, metric_ops))]
-        summ_ops = metric_summ_ops + extra_summ_ops if extra_summ_ops else metric_summ_ops
+        summ_ops = metric_summ_ops + list(extra_summ_ops) if extra_summ_ops else metric_summ_ops
         summ_op = tf.summary.merge(summ_ops)
         if from_scratch:
             delete_and_make_dir(self._checkpoint_dir)

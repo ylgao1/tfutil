@@ -4,12 +4,12 @@ import numpy as np
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import confusion_matrix
 
-__all__ = ['metric_variable', 'metrics_accuracy', 'metrics_mean_per_class_accuracy',
+__all__ = ['metric_variable', 'get_metric_name', 'metrics_accuracy', 'metrics_mean_per_class_accuracy',
            'metrics_apc_np', 'metrics_auc', 'metrics_confusion_matrix', 'metrics_spearman_correlation',
            'metrics_mean_squared_error']
 
 
-def metric_variable(shape, dtype=tf.float64, validate_shape=True, name=None):
+def metric_variable(shape, dtype=tf.float32, validate_shape=True, name=None):
     """Create variable in `GraphKeys.(LOCAL|METRIC_VARIABLES`) collections."""
 
     return variable_scope.variable(
@@ -100,6 +100,10 @@ def _remove_squeezable_dimensions(predictions, labels, weights):
     return predictions, labels, weights
 
 
+def get_metric_name(metric_op):
+    return metric_op.name.split('/')[-2]
+
+
 def add_reset_op(sc=None):
     def decorate(func):
         @wraps(func)
@@ -109,7 +113,9 @@ def add_reset_op(sc=None):
                 vars = tf.contrib.framework.get_variables(
                     scope.original_name_scope, collection=tf.GraphKeys.LOCAL_VARIABLES)
                 reset_op = tf.variables_initializer(vars)
-            return metric_op, update_op, reset_op
+            metric_name = get_metric_name(metric_op)
+            metric_summ_op = tf.summary.scalar(metric_name, metric_op)
+            return metric_op, update_op, reset_op, metric_summ_op
 
         return wrapper
 

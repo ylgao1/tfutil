@@ -1,13 +1,15 @@
 import tensorflow as tf
 from progress.bar import Bar
 
+from .metrics import get_metric_name
+
 __all__ = ['Listener']
 
 class Listener:
     def __init__(self, name, data_gn, metric_opdefs):
         self._name = name
         self._data_gn, self._data_initializer, self._steps_per_epoch = data_gn
-        self._metric_ops, self._update_ops, self._reset_ops = list(zip(*metric_opdefs))
+        self._metric_ops, self._update_ops, self._reset_ops, self._summ_metric_ops = list(zip(*metric_opdefs))
         self._checkpoint_dir = None
         self._inputs = None
         self._labels = None
@@ -27,9 +29,8 @@ class Listener:
         self._training_steps_per_epoch = training_steps_per_epoch
         logdir = f'{self._checkpoint_dir}/{self._name}'
         self._fw = tf.summary.FileWriter(logdir)
-        self._summ_names = ['{0}/{1}'.format(self._name, m.name.split('/')[-2]) for m in self._metric_ops]
-        self._summ_op = tf.summary.merge(
-            [tf.summary.scalar(*tup) for tup in list(zip(self._summ_names, self._metric_ops))])
+        self._summ_names = ['{0}/{1}'.format(self._name, get_metric_name(m)) for m in self._metric_ops]
+        self._summ_op = tf.summary.merge(self._summ_metric_ops)
 
     def run(self, session, global_step_value):
         session.run(self._reset_ops)
