@@ -24,6 +24,7 @@ def data_generator(time_steps=100, seed=None):
 
     return gen
 
+
 tf.reset_default_graph()
 
 inputs = tf.placeholder(dtype=tf.float32, shape=[None, None, 2])
@@ -36,10 +37,11 @@ lstm_cell = tf.nn.rnn_cell.LSTMCell(num_units=cell_units, num_proj=1)
 network = TestRNN(lstm_cell, name='lstm_network')
 
 logits_series, states = network(inputs, is_training)
-logits = logits_series[:,-1, 0]
-
+logits = logits_series[:, -1, 0]
 
 loss = tf.losses.mean_squared_error(labels, logits, scope='loss')
+graph_def = tf.get_default_graph().as_graph_def()
+
 learing_rate_init = 2e-3
 learning_rate_decay_steps = 20000
 learning_rate = tfutil.dynamic_learning_rate(learing_rate_init, learning_rate_decay_steps)
@@ -73,26 +75,5 @@ listeners = [valid_listener, test_listener]
 
 model = tfutil.TFModel(model_tensors, model_dir)
 model.train_stepwise(train_op, gntr, num_steps, steps_per_checkpoint,
-                     metric_opdefs, extra_summ_op, listeners, from_scratch=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                     metric_opdefs, extra_summ_op, listeners, graph=tfutil.create_op_graph(graph_def),
+                     from_scratch=True)

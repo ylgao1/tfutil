@@ -1,5 +1,9 @@
 # tfutil Changelog
 
+## Version 0.3.1 - 24. March 2018
+
+* Fixed `create_op_graph` crashing issue for RNN.
+
 ## Version 0.3 - 23. March 2018
 
 * Added stepwise training control.

@@ -4,6 +4,7 @@ from tensorflow.contrib import copy_graph
 
 __all__ = ['cal_num_parameters', 'delete_and_make_dir', 'read_events_file', 'create_op_graph']
 
+
 def cal_num_parameters():
     return np.sum(list(map(lambda tv: np.prod(tv.get_shape().as_list()), tf.trainable_variables())))
 
@@ -28,7 +29,8 @@ def read_events_file(events_filename):
     return dt
 
 
-def create_op_graph(op):
+def create_op_graph(graph_def):
     g = tf.Graph()
-    copy_graph.copy_op_to_graph(op, g, [])
+    with g.as_default():
+        tf.import_graph_def(graph_def, name='')
     return g

@@ -11,6 +11,7 @@ network = TestNet(num_classes, dropout_keep_prob=0.5)
 logits = network(inputs, is_training)
 
 loss = tfutil.loss(labels, logits)
+graph_def = tf.get_default_graph().as_graph_def()
 
 learning_rate_init = 1e-3
 learning_rate_decay_steps = 500
@@ -51,4 +52,4 @@ listeners = [valid_listener, test_listener]
 model = tfutil.TFModel(model_tensors, model_dir)
 
 model.train(train_op, gntr, num_epochs, metric_opdefs, extra_summ_op, listeners, max_checkpoint_to_keep=5,
-            summ_steps=10, graph=tfutil.create_op_graph(loss), from_scratch=True)
+            summ_steps=10, graph=tfutil.create_op_graph(graph_def), from_scratch=True)
