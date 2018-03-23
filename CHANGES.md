@@ -1,5 +1,10 @@
 # tfutil Changelog
 
+## Version 0.3 - 23. March 2018
+
+* Added stepwise training control.
+* Added `metrics_mean_absolute_error` method in metrics module.
+
 ## Version 0.2.1 - 23. March 2018
 
 * Changed summary system to group all test metric into one scalar graph.
