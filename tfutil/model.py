@@ -34,7 +34,7 @@ class TFModel:
 
     def train(self, train_op, gntr, num_epochs,
               metric_opdefs, extra_summ_ops=None, listeners=None,
-              max_checkpoint_to_keep=10, summ_steps=100,
+              max_checkpoint_to_keep=10, summ_steps=100, session_config_proto=None,
               graph=None, from_scratch=True):
 
         metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
@@ -55,8 +55,12 @@ class TFModel:
             for l in listeners:
                 l.begin(self._checkpoint_dir, self._inputs, self._labels, self._is_training, self._logits,
                         steps_per_epoch)
-
-        with tf.Session() as sess:
+        if session_config_proto is None:
+            sess_config_proto = tf.ConfigProto()
+            sess_config_proto.gpu_options.allow_growth = True
+        else:
+            sess_config_proto = session_config_proto
+        with tf.Session(config=sess_config_proto) as sess:
             sess.run(create_init_op())
             if not from_scratch:
                 load_ckpt(sess, model_dir=self._checkpoint_dir)
@@ -95,7 +99,7 @@ class TFModel:
 
     def train_stepwise(self, train_op, gntr, num_steps, steps_per_checkpoint,
                        metric_opdefs, extra_summ_ops=None, listeners=None,
-                       max_checkpoint_to_keep=10, summ_steps=100,
+                       max_checkpoint_to_keep=10, summ_steps=100, session_config_proto=None,
                        graph=None, from_scratch=True):
         metric_ops, update_ops, reset_ops, _, _ = list(zip(*metric_opdefs))
         metric_summ_names = ['train/{0}'.format(m.name.split('/')[-2]) for m in metric_ops]
@@ -116,7 +120,12 @@ class TFModel:
             for l in listeners:
                 l.begin(self._checkpoint_dir, self._inputs, self._labels, self._is_training, self._logits,
                         steps_per_checkpoint)
-        with tf.Session() as sess:
+        if session_config_proto is None:
+            sess_config_proto = tf.ConfigProto()
+            sess_config_proto.gpu_options.allow_growth = True
+        else:
+            sess_config_proto = session_config_proto
+        with tf.Session(config=sess_config_proto) as sess:
             sess.run(create_init_op())
             if not from_scratch:
                 load_ckpt(sess, model_dir=self._checkpoint_dir)

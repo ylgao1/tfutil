@@ -1,5 +1,9 @@
 # tfutil Changelog
 
+## Version 0.3.3 - 25. March 2018
+
+* Added config parameter for `tf.Session` in `train` and `train_stepwise` to make gpu memory allocation grow gradually.
+
 ## Version 0.3.2 - 24. March 2018
 
 * Bug fixes.
